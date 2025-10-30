@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import avatar from './assets/forum_logo.png'
+import avatar from '../assets/forum_logo.png'
 
 function ForumPost({ posts }){
     const postItems = posts.map(post =>  
