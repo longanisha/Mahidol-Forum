@@ -1,4 +1,4 @@
-import { div } from 'framer-motion/m';
+import { motion } from 'framer-motion';
 import React from 'react';
 
 const DiscussionCard = ({ discussion }) => {
