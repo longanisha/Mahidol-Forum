@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -6,11 +6,25 @@ from datetime import datetime
 from supabase import create_client, Client
 import config
 
+# response helpers
+from responses import success_response, error_response
+
 app = FastAPI(
     title="Mahidol Forum API",
     description="Backend API for Mahidol Forum",
     version="1.0.0"
 )
+
+
+# exception handlers (registered after app is created)
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return error_response(str(exc.detail), status_code=exc.status_code)
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return error_response(str(exc), status_code=500)
 
 # CORS middleware
 app.add_middleware(
@@ -61,6 +75,9 @@ class Tag(BaseModel):
     name: str
     count: int
 
+class TagCreate(BaseModel):
+    name: str
+    
 class AnnouncementCreate(BaseModel):
     title: str
     content: str
@@ -178,7 +195,7 @@ mock_announcements = [
 # Routes
 @app.get("/")
 async def root():
-    return {"message": "Mahidol Forum API", "version": "1.0.0"}
+    return success_response("Mahidol Forum API v1.0.0", status_code=200)
 
 # Authentication routes
 @app.post("/auth/register")
@@ -191,7 +208,7 @@ async def register(user: UserCreate):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email already registered!"
             )
-        
+
         # Create user in Supabase
         user_data = {
             "username": user.username,
@@ -297,41 +314,91 @@ async def get_discussions():
                     upvotes=discussion.get("upvotes", 0),
                     created_at=discussion["created_at"]
                 ))
-            return discussions
+            return success_response("Discussions fetched", status_code=200, data=discussions)
     except Exception as e:
-        pass
+        return error_response(str(e), status_code=422)
     
     # Fallback to mock data
-    return mock_discussions
+    return success_response("Discussions fetched (mock)", status_code=200, data=mock_discussions)
 
 @app.post("/discussions", response_model=Discussion)
 async def create_discussion(discussion: DiscussionCreate):
     try:
-        # Try to create in Supabase
+        # Create the discussion without tags first
         discussion_data = {
             "title": discussion.title,
             "content": discussion.content,
-            "author_id": 1,  # Mock author ID
-            "tags": discussion.tags
+            "author_id": 2,  # Mock author ID
         }
         
         result = supabase.table("discussions").insert(discussion_data).execute()
         
-        if result.data:
-            created_discussion = result.data[0]
-            return Discussion(
-                id=created_discussion["id"],
-                title=created_discussion["title"],
-                content=created_discussion["content"],
-                author=mock_users[0],
-                tags=created_discussion.get("tags", []),
-                views=0,
-                comments=0,
-                upvotes=0,
-                created_at=created_discussion["created_at"]
+        if not result.data:
+            raise HTTPException(status_code=500, detail="Failed to create discussion")
+            
+        created_discussion = result.data[0]
+        discussion_id = created_discussion["id"]
+        
+        # Process tags - for each tag, ensure it exists and create the pivot entry
+        for tag_name in discussion.tags:
+            # Try to find existing tag
+            tag_result = supabase.table("tags").select("id").eq("name", tag_name).execute()
+            
+            if tag_result.data and len(tag_result.data) > 0:
+                tag_id = tag_result.data[0]["id"]
+            else:
+                # Create new tag if it doesn't exist
+                new_tag_result = supabase.table("tags").insert({"name": tag_name}).execute()
+                if not new_tag_result.data:
+                    continue  # Skip if tag creation fails
+                tag_id = new_tag_result.data[0]["id"]
+            
+            # Create pivot table entry
+            supabase.table("discussion_tags").insert({
+                "discussion_id": discussion_id,
+                "tag_id": tag_id
+            }).execute()
+
+        # Fetch the complete discussion with author and tags
+        complete_result = supabase.table("discussions").select("""
+            *,
+            author:users!inner (
+                id,
+                username,
+                email,
+                created_at
+            ),
+            tags:discussion_tags!inner (
+                tags (
+                    id,
+                    name,
+                    count
+                )
             )
+        """).eq("id", discussion_id).execute()
+        
+        if complete_result.data:
+            discussion_with_tags = complete_result.data[0]
+            created = Discussion(
+                id=discussion_with_tags["id"],
+                title=discussion_with_tags["title"],
+                content=discussion_with_tags["content"],
+                author=User(
+                    id=discussion_with_tags["author"]["id"],
+                    username=discussion_with_tags["author"]["username"],
+                    email=discussion_with_tags["author"]["email"],
+                    created_at=discussion_with_tags["author"]["created_at"]
+                ),
+                tags=[tag["name"] for tag in discussion_with_tags.get("tags", [])],
+                views=discussion_with_tags.get("views", 0),
+                comments=discussion_with_tags.get("comments", 0),
+                upvotes=discussion_with_tags.get("upvotes", 0),
+                created_at=discussion_with_tags["created_at"]
+            )
+            return success_response("Discussion created", status_code=201, data=created)
     except Exception as e:
-        pass
+        return error_response(str(e), status_code=422)
+
     
     # Fallback to mock data
     new_discussion = Discussion(
@@ -346,7 +413,7 @@ async def create_discussion(discussion: DiscussionCreate):
         created_at=datetime.now().isoformat()
     )
     mock_discussions.append(new_discussion)
-    return new_discussion
+    return success_response("Discussion created (mock)", status_code=201, data=new_discussion)
 
 # Tag routes
 @app.get("/tags", response_model=List[Tag])
@@ -356,16 +423,78 @@ async def get_tags():
         result = supabase.table("tags").select("*").execute()
         
         if result.data:
-            return [Tag(
+            tags = [Tag(
                 id=tag["id"],
                 name=tag["name"],
                 count=tag.get("count", 0)
             ) for tag in result.data]
+            return success_response("Tags fetched", status_code=200, data=tags)
     except Exception as e:
-        pass
+        raise
     
     # Fallback to mock data
-    return mock_tags
+    return success_response("Tags fetched (mock)", status_code=200, data=mock_tags)
+
+# POST Tag for admin 
+@app.post("/admin/tags", response_model=Tag)
+async def create_tag(tag: TagCreate):
+    try:
+        # Try to create in Supabase
+        tag_data = {
+            "name": tag.name,
+            "count": 0
+        }
+        
+        result = supabase.table("tags").insert(tag_data).execute()
+        
+        if result.data:
+            created_tag = result.data[0]
+            created = Tag(
+                id=created_tag["id"],
+                name=created_tag["name"],
+                count=created_tag.get("count", 0)
+            )
+            return success_response("Tag created", status_code=201, data=created)
+    except Exception as e:
+        raise
+
+
+# GET Tag detail for admin
+@app.get("/admin/tags/{tag_id}", response_model=Tag)
+async def get_tag(tag_id: int):
+    try:
+        # Try to get from Supabase
+        result = supabase.table("tags").select("*").eq("id", tag_id).execute()
+        
+        if result.data:
+            tag_data = result.data[0]
+            tag = Tag(
+                id=tag_data["id"],
+                name=tag_data["name"],
+                count=tag_data.get("count", 0)
+            )
+            return success_response("Tag fetched", status_code=200, data=tag)
+        else:
+            raise HTTPException(status_code=404, detail="Tag not found")
+    except Exception as e:
+        raise
+    
+@app.delete("/admin/tags/{tag_id}", status_code=204)
+async def delete_tag(tag_id: int):
+    try:
+        # Try to delete from Supabase
+        result = supabase.table("tags").delete().eq("id", tag_id).execute()
+        
+        # Supabase client returns .error and .data
+        if getattr(result, "error", None):
+            raise HTTPException(status_code=400, detail=str(result.error))
+
+        if getattr(result, "data", None) and len(result.data) > 0:
+            return success_response("Tag deleted", status_code=200)
+
+        raise HTTPException(status_code=404, detail="Tag not found")
+    except Exception as e:
+        raise
 
 # Announcement routes
 @app.get("/announcements", response_model=List[Announcement])
@@ -375,7 +504,7 @@ async def get_announcements():
         result = supabase.table("announcements").select("*").order("created_at", desc=True).execute()
         
         if result.data:
-            return [Announcement(
+            announcements = [Announcement(
                 id=announcement["id"],
                 title=announcement["title"],
                 content=announcement["content"],
@@ -384,11 +513,12 @@ async def get_announcements():
                 created_at=announcement["created_at"],
                 is_read=announcement.get("is_read", False)
             ) for announcement in result.data]
+            return success_response("Announcements fetched", status_code=200, data=announcements)
     except Exception as e:
-        pass
-    
+        raise
+
     # Fallback to mock data
-    return mock_announcements
+    return success_response("Announcements fetched (mock)", status_code=200, data=mock_announcements)
 
 @app.post("/announcements", response_model=Announcement)
 async def create_announcement(announcement: AnnouncementCreate):
@@ -405,17 +535,18 @@ async def create_announcement(announcement: AnnouncementCreate):
         
         if result.data:
             created_announcement = result.data[0]
-            return Announcement(
+            created = Announcement(
                 id=created_announcement["id"],
                 title=created_announcement["title"],
                 content=created_announcement["content"],
                 author=created_announcement["author"],
-                priority=created_announcement["priority"],
+                priority=created_announcement.get("priority", "medium"),
                 created_at=created_announcement["created_at"],
                 is_read=False
             )
+            return success_response("Announcement created", status_code=201, data=created)
     except Exception as e:
-        pass
+        raise
     
     # Fallback to mock data
     new_announcement = Announcement(
@@ -428,7 +559,7 @@ async def create_announcement(announcement: AnnouncementCreate):
         is_read=False
     )
     mock_announcements.append(new_announcement)
-    return new_announcement
+    return success_response("Announcement created (mock)", status_code=201, data=new_announcement)
 
 if __name__ == "__main__":
     import uvicorn
