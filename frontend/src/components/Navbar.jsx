@@ -1,6 +1,6 @@
 import forumlogo from '../assets/forum_logo.png'
 import React from 'react';
-import '../style/App.css'
+import '../style/Sidebar.css'
 
 const Navbar = () => {
     return (

@@ -1,6 +1,6 @@
 import React from 'react';
-import Header from './Header';
-import Sidebar from './Sidebar_Temp';
+import Header from './Header.jsx';
+import Sidebar from './Sidebar_Temp.jsx';
 
 const Layout = ({ children }) => {
   return (
