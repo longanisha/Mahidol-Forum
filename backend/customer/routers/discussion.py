@@ -32,28 +32,29 @@ async def get_discussions():
         if result.data:
             discussions = []
             for discussion in result.data:
-                author = discussion.get("author")
-                if not author:
+                # author = discussion.get("author")
+                author_data = supabase.table("users").select("*").eq("id", discussion["author_id"]).execute()
+                if not author_data.data:
                     author = None
                 else:
                     author = User(
-                        id=author["id"],
-                        username=author["username"],
-                        email=author["email"],
-                        created_at=author["created_at"]
+                        id=author_data.data[0]["id"],
+                        username=author_data.data[0]["username"],
+                        email=author_data.data[0]["email"],
+                        created_at=author_data.data[0]["created_at"]
                     )
                 discussions.append(Discussion(
                     id=discussion["id"],
                     title=discussion["title"],
                     content=discussion["content"],
                     author=author,
-                    tags=discussion.get("tags", []),
+                    tags=discussion.get("tags", ["science"]),
                     views=discussion.get("views", 0),
                     comments=discussion.get("comments", 0),
                     upvotes=discussion.get("upvotes", 0),
                     created_at=discussion["created_at"]
                 ))
-            return success_response("Discussions fetched", status_code=200, data=discussions)
+            return success_response("Discussions fetched", status_code=200, data={"discussions": discussions, "meta": {"total": len(discussions)}})
     # except Exception as e:
     #     return error_response(str(e), status_code=422)
     

@@ -15,3 +15,7 @@ class User(BaseModel):
     username: str
     email: str
     created_at: str
+    
+    model_config = {
+        "from_attributes": True
+    }
