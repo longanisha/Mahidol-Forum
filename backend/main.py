@@ -15,7 +15,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-
 # exception handlers (registered after app is created)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -414,6 +413,11 @@ async def create_discussion(discussion: DiscussionCreate):
     )
     mock_discussions.append(new_discussion)
     return success_response("Discussion created (mock)", status_code=201, data=new_discussion)
+
+from customer.routers import discussion, tag
+app.include_router(discussion.router)
+app.include_router(tag.router)
+
 
 # Tag routes
 @app.get("/tags", response_model=List[Tag])
