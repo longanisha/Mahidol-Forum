@@ -1,15 +1,23 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
-    "./src/**/*.{js,jsx,ts,tsx}",
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        'mahidol-blue': '#1e40af',
-        'mahidol-yellow': '#fbbf24',
+        primary: '#34314c',
+        accent: '#47b8e0',
+        warm: '#ff7473',
+        sun: '#ffc952',
+        muted: '#f5f6fb',
+      },
+      fontFamily: {
+        sans: ['Poppins', 'system-ui', 'sans-serif'],
       },
     },
   },
   plugins: [],
 }
+
