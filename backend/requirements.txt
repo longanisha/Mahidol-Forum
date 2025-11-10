@@ -1,6 +1,6 @@
 fastapi==0.115.5
 uvicorn[standard]==0.32.0
-supabase==2.23.3
+supabase
 pydantic-settings==2.6.0
 python-dotenv==1.0.1
 passlib[bcrypt]==1.7.4
