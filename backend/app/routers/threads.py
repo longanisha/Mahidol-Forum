@@ -1098,7 +1098,7 @@ async def get_all_replies_to_my_posts(
       return []
     
     # Get replies to these posts
-    # 步骤2：查询这些帖子下的所有回复（使用 .in_('post_id', my_post_ids) 筛选）
+    # 步骤2：查询这些帖子下的所有Reply（使用 .in_('post_id', my_post_ids) 筛选）
     print(f"[get_all_replies_to_my_posts] Step 2: Querying replies for post_ids: {my_post_ids[:5]}... (showing first 5)")
     response = (
       supabase.table('post_replies')

@@ -108,7 +108,7 @@ class ReportCreate(BaseModel):
 class ReportResponse(BaseModel):
   id: str
   post_id: Optional[str] = None  # 主帖子ID（原 thread_id）
-  reply_id: Optional[str] = None  # 回复ID（原 post_id）
+  reply_id: Optional[str] = None  # ReplyID（原 post_id）
   reporter_id: str
   reason: str
   description: Optional[str] = None

@@ -169,7 +169,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="text-sm text-accent hover:text-accent/80 font-semibold transition"
                 >
-                  {showReplyForm ? 'Cancel回复' : '回复'}
+                  {showReplyForm ? 'CancelReply' : 'Reply'}
                 </button>
               )}
               {/* Report button */}
