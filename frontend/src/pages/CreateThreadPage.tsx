@@ -87,13 +87,20 @@ export function CreateThreadPage() {
       }
 
       // Ensure all fields are properly formatted
+      // tags is now required, so filter out empty tags and ensure they're strings
+      const validTags = selectedTags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
+      if (validTags.length === 0) {
+        throw new Error('At least one tag is required.')
+      }
+      
       const requestBody: {
         title: string
         category?: string
         summary?: string
-        tags?: string[]
+        tags: string[]
       } = {
         title: title.trim(),
+        tags: validTags,  // tags is required
       }
       
       // Only include optional fields if they have values
@@ -106,14 +113,6 @@ export function CreateThreadPage() {
         const textContent = content.replace(/<[^>]*>/g, '').trim()
         if (textContent) {
           requestBody.summary = textContent.substring(0, 500)
-        }
-      }
-      
-      if (selectedTags && selectedTags.length > 0) {
-        // Filter out empty tags and ensure they're strings
-        const validTags = selectedTags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
-        if (validTags.length > 0) {
-          requestBody.tags = validTags
         }
       }
 
@@ -146,6 +145,11 @@ export function CreateThreadPage() {
     const textContent = content.replace(/<[^>]*>/g, '').trim()
     if (!textContent) {
       setError('Please provide thread content.')
+      return
+    }
+    // Check if at least one tag is selected
+    if (!selectedTags || selectedTags.length === 0) {
+      setError('Please select at least one tag.')
       return
     }
     mutate()
@@ -250,15 +254,15 @@ export function CreateThreadPage() {
 
           <div>
             <label className="block text-sm font-semibold text-primary mb-3">
-              Tags (click to select)
+              Tags * <span className="text-primary/60 text-xs font-normal">(at least one tag is required)</span>
             </label>
             {tagsLoading ? (
               <div className="text-sm text-primary/60">Loading tags...</div>
             ) : tagsError ? (
-              <div className="text-sm text-warm">Failed to load tags. You can still create a thread without tags.</div>
+              <div className="text-sm text-warm">Failed to load tags. Please refresh the page to try again.</div>
             ) : sortedHotTags.length === 0 ? (
-              <div className="text-sm text-primary/60 mb-3">
-                No tags available yet. You can create a thread without tags, or tags will be generated from your content.
+              <div className="text-sm text-warm mb-3">
+                No tags available yet. Please contact an administrator to add tags to the system.
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -276,9 +280,7 @@ export function CreateThreadPage() {
                       }`}
                     >
                       {isHot && (
-                        <span className="text-warm" title="Hot tag">
-                          🔥
-                        </span>
+                        <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
                       )}
                       {hotTag.tag} ({hotTag.count})
                     </button>
@@ -286,26 +288,30 @@ export function CreateThreadPage() {
                 })}
               </div>
             )}
-            {selectedTags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="text-xs text-primary/60">Selected:</span>
-                {selectedTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleTagToggle(tag)}
-                      className="hover:text-warm transition"
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedTags.length > 0 ? (
+                <>
+                  <span className="text-xs text-primary/60">Selected ({selectedTags.length}/10):</span>
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleTagToggle(tag)}
+                        className="hover:text-warm transition"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </>
+              ) : (
+                <span className="text-xs text-warm">Please select at least one tag to continue.</span>
+              )}
+            </div>
           </div>
 
           {error && (

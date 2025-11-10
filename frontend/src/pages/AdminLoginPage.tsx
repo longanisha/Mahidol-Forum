@@ -47,17 +47,17 @@ export function AdminLoginPage() {
         // 立即重定向
         window.location.href = '/admin'
       } else {
-        setError(response.message || '登录失败，请重试。')
+        setError(response.message || 'Login failed, please try again.')
       }
     } catch (err) {
       console.error('[AdminLogin] Login error:', err)
-      let errorMessage = '登录失败，请重试。'
+      let errorMessage = 'Login failed, please try again.'
       
       if (err instanceof Error) {
         if (err.message.includes('401') || err.message.includes('Unauthorized')) {
-          errorMessage = '账号或密码错误，请检查您的凭据。'
+          errorMessage = 'Account or password incorrect, please check your credentials.'
         } else if (err.message.includes('Failed to fetch') || err.message.includes('Network')) {
-          errorMessage = '无法连接到服务器，请检查网络连接。'
+          errorMessage = 'Unable to connect to server, please check your network connection.'
         } else {
           errorMessage = err.message
         }

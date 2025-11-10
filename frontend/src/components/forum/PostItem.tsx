@@ -107,7 +107,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
     <div className={depth > 0 ? 'ml-8 mt-3' : ''}>
       <article className={`bg-white rounded-2xl p-5 border border-primary/10 shadow-sm ${depth > 0 ? 'border-l-4 border-l-accent/30' : ''}`}>
         <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold text-sm shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm shrink-0">
             {post.author?.username?.[0]?.toUpperCase() || 'M'}
           </div>
           <div className="flex-1 min-w-0">
@@ -169,7 +169,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="text-sm text-accent hover:text-accent/80 font-semibold transition"
                 >
-                  {showReplyForm ? '取消回复' : '回复'}
+                  {showReplyForm ? 'Cancel回复' : '回复'}
                 </button>
               )}
               {/* Report button */}
@@ -179,7 +179,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   className="text-sm text-warm hover:text-warm/80 font-semibold transition"
                   title="Report this post"
                 >
-                  ⚠️ 举报
+                  <i className="fa-solid fa-triangle-exclamation"></i> Report
                 </button>
               )}
             </div>
@@ -206,11 +206,11 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-primary mb-4">举报评论</h3>
+            <h3 className="text-xl font-bold text-primary mb-4">Report Comment</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
-                  原因 <span className="text-warm">*</span>
+                  Reason <span className="text-warm">*</span>
                 </label>
                 <input
                   type="text"
@@ -222,7 +222,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-primary mb-2">详细描述（可选）</label>
+                <label className="block text-sm font-semibold text-primary mb-2">Description (optional)</label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
@@ -237,7 +237,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   disabled={isReporting || !reportReason.trim()}
                   className="flex-1 px-4 py-2 rounded-lg font-semibold text-white bg-warm hover:bg-warm/90 transition disabled:opacity-50"
                 >
-                  {isReporting ? '提交中...' : '提交举报'}
+                  {isReporting ? 'Submitting...' : 'Submit Report'}
                 </button>
                 <button
                   type="button"
@@ -248,7 +248,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   }}
                   className="px-4 py-2 rounded-lg font-semibold text-primary/70 bg-primary/10 hover:bg-primary/20 transition"
                 >
-                  取消
+                  Cancel
                 </button>
               </div>
             </form>

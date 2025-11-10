@@ -18,6 +18,7 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 'applications', label: 'Applications', icon: '📋', section: 'menu' },
   { id: 'reports', label: 'Reports', icon: '📝', section: 'menu' },
   { id: 'creation-requests', label: 'Creation Requests', icon: '➕', section: 'menu' },
+  { id: 'tags', label: 'Tags', icon: '🏷️', section: 'menu' },
   { id: 'points', label: 'Points', icon: '⭐', section: 'others' },
   { id: 'announcements', label: 'Announcements', icon: '📢', section: 'others' },
 ]

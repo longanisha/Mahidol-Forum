@@ -163,7 +163,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
     <article className="bg-white rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition p-5">
       <header className="flex items-center justify-between mb-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-warm flex items-center justify-center text-white font-semibold text-sm">
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
             {authorInitial}
           </div>
           <div>
@@ -269,7 +269,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   className="text-xs text-warm hover:text-warm/80 transition flex-shrink-0"
                   title="Report this thread"
                 >
-                  ⚠️
+                  <i className="fa-solid fa-triangle-exclamation"></i>
                 </button>
               )}
             </>
@@ -279,7 +279,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         {thread.category !== 'Announcement' && thread.category !== 'LINE Group' && (
           <Link
             to={`/thread/${thread.id}`}
-            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
           >
             View post
           </Link>
@@ -290,11 +290,11 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-primary mb-4">举报帖子</h3>
+            <h3 className="text-xl font-bold text-primary mb-4">Report Post</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
-                  原因 <span className="text-warm">*</span>
+                  Reason <span className="text-warm">*</span>
                 </label>
                 <input
                   type="text"
@@ -306,7 +306,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-primary mb-2">详细描述（可选）</label>
+                <label className="block text-sm font-semibold text-primary mb-2">Description (optional)</label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
@@ -321,7 +321,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   disabled={isReporting || !reportReason.trim()}
                   className="flex-1 px-4 py-2 rounded-lg font-semibold text-white bg-warm hover:bg-warm/90 transition disabled:opacity-50"
                 >
-                  {isReporting ? '提交中...' : '提交举报'}
+                  {isReporting ? 'Submitting...' : 'Submit Report'}
                 </button>
                 <button
                   type="button"
@@ -332,7 +332,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   }}
                   className="px-4 py-2 rounded-lg font-semibold text-primary/70 bg-primary/10 hover:bg-primary/20 transition"
                 >
-                  取消
+                  Cancel
                 </button>
               </div>
             </form>

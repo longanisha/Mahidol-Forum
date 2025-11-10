@@ -404,7 +404,8 @@ async def create_post(
       
       print(f"[CREATE_POST] ✅ Profile created for user {user.id}")
     
-    # Prepare insert payload, only include tags if provided
+    # Prepare insert payload
+    # tags is now required, so it will always be included
     insert_payload = {
       'title': payload.title,
       'author_id': user.id,
@@ -412,6 +413,7 @@ async def create_post(
       'upvote_count': 0,
       'downvote_count': 0,
       'is_closed': False,
+      'tags': payload.tags,  # tags is required
     }
     
     # Add optional fields
@@ -419,8 +421,6 @@ async def create_post(
       insert_payload['category'] = payload.category
     if payload.summary:
       insert_payload['summary'] = payload.summary
-    if payload.tags and len(payload.tags) > 0:
-      insert_payload['tags'] = payload.tags
 
     # Insert the post
     print(f"[CREATE_POST] Attempting to insert post")

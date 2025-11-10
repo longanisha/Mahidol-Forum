@@ -840,7 +840,7 @@ export function ProfilePage() {
                       className="w-24 h-24 rounded-full object-cover border-2 border-primary/10"
                     />
                   ) : (
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-warm to-sun flex items-center justify-center text-white font-bold text-2xl">
+                    <div className="w-24 h-24 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-bold text-2xl">
                       {displayUsername[0]?.toUpperCase() || 'M'}
                     </div>
                   )}
@@ -958,7 +958,7 @@ export function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => {
-                        // 取消编辑时，重置编辑值为当前的显示值
+                        // Cancel编辑时，重置编辑值为当前的显示值
                         setEditingUsername(displayUsername || '')
                         setIsEditing(false)
                         setError(null)

@@ -95,7 +95,7 @@ export default function App() {
       <Route
         path="/login"
         element={
-          <MainLayout showHeader={false} showFooter={false}>
+          <MainLayout showFooter={false}>
             <LoginPage />
           </MainLayout>
         }
@@ -104,7 +104,7 @@ export default function App() {
       <Route
         path="/register"
         element={
-          <MainLayout showHeader={false} showFooter={false}>
+          <MainLayout showFooter={false}>
             <RegisterPage />
           </MainLayout>
         }

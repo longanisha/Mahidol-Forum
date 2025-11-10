@@ -39,9 +39,15 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
         throw new Error('You must be logged in to create a thread.')
       }
 
+      // Filter out empty tags and ensure they're strings
+      const validTags = tags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
+      if (validTags.length === 0) {
+        throw new Error('At least one tag is required.')
+      }
+
       await apiFetch('/posts', {
         method: 'POST',
-        body: JSON.stringify({ title, category, summary, tags: tags.length > 0 ? tags : undefined }),
+        body: JSON.stringify({ title, category, summary, tags: validTags }),
         accessToken,
       })
     },
@@ -70,14 +76,21 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
       setError('Please provide a thread title.')
       return
     }
+    // Check if at least one tag is provided
+    const validTags = tags.filter(tag => tag && tag.trim())
+    if (validTags.length === 0) {
+      setError('Please add at least one tag.')
+      return
+    }
     mutate()
   }
 
   const handleTagAdd = () => {
     const trimmed = tagInput.trim()
-    if (trimmed && !tags.includes(trimmed) && tags.length < 5) {
+    if (trimmed && !tags.includes(trimmed) && tags.length < 10) {
       setTags([...tags, trimmed])
       setTagInput('')
+      setError(null) // Clear error when a tag is added
     }
   }
 
@@ -164,7 +177,9 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-primary mb-2">Tags (optional)</label>
+          <label className="block text-sm font-semibold text-primary mb-2">
+            Tags * <span className="text-primary/60 text-xs font-normal">(at least one tag is required)</span>
+          </label>
           <div className="flex gap-2 mb-2">
             <input
               value={tagInput}
@@ -181,13 +196,15 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
             <button
               type="button"
               onClick={handleTagAdd}
-              className="px-4 py-2 rounded-lg font-semibold text-white bg-accent hover:bg-accent/90 transition"
+              disabled={!tagInput.trim() || tags.length >= 10}
+              className="px-4 py-2 rounded-lg font-semibold text-white bg-accent hover:bg-accent/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Add
             </button>
           </div>
-          {tags.length > 0 && (
+          {tags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
+              <span className="text-xs text-primary/60 self-center">Selected ({tags.length}/10):</span>
               {tags.map((tag) => (
                 <span
                   key={tag}
@@ -204,6 +221,8 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
                 </span>
               ))}
             </div>
+          ) : (
+            <div className="text-xs text-warm">Please add at least one tag to continue.</div>
           )}
         </div>
 

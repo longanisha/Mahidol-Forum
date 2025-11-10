@@ -72,7 +72,7 @@ export function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-4 relative pt-24"
       style={{
         backgroundImage: 'url(/mahidol_bg.jpg)',
         backgroundSize: 'cover',
@@ -80,7 +80,7 @@ export function LoginPage() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      <div className="absolute inset-0 bg-primary/80 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-primary/80 backdrop-blur-sm z-0"></div>
       <div className="w-full max-w-md relative z-10">
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">

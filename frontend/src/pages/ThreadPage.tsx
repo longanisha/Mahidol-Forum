@@ -194,7 +194,7 @@ export function ThreadPage() {
             <p className="text-primary/70 mb-4 leading-relaxed">{thread.summary}</p>
           )}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold text-sm">
+            <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
               {thread.author?.username?.[0]?.toUpperCase() || 'M'}
             </div>
             <div>
