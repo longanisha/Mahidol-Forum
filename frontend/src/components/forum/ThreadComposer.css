@@ -1,0 +1,92 @@
+.composer {
+  margin: 2rem 0 3rem;
+  background: #fff;
+  border-radius: 24px;
+  padding: 2rem;
+  border: 1px solid rgba(52, 49, 76, 0.08);
+  box-shadow: 0 20px 40px -28px rgba(52, 49, 76, 0.45);
+}
+
+.composer h2 {
+  margin: 0 0 1.5rem;
+  color: var(--color-primary);
+}
+
+.composer__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.composer__row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.composer__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 220px;
+}
+
+.composer__field label {
+  font-weight: 600;
+  color: rgba(52, 49, 76, 0.9);
+}
+
+.composer__field input,
+.composer__field select,
+.composer__field textarea {
+  border-radius: 16px;
+  border: 1px solid rgba(52, 49, 76, 0.15);
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  background-color: rgba(253, 253, 255, 0.95);
+}
+
+.composer__field textarea {
+  resize: vertical;
+}
+
+.composer__field input:focus,
+.composer__field select:focus,
+.composer__field textarea:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(71, 184, 224, 0.2);
+  outline: none;
+}
+
+.composer__error {
+  color: var(--color-warm);
+  font-weight: 500;
+  margin: 0;
+}
+
+.composer__submit {
+  align-self: flex-start;
+  padding: 0.85rem 2.2rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.composer__submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.composer__submit:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 22px -12px rgba(52, 49, 76, 0.45);
+}
+
+
