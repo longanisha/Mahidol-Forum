@@ -81,7 +81,7 @@ async function fetchMyApplications(accessToken: string | null): Promise<LineGrou
     return result
   } catch (error) {
     console.error('[fetchMyApplications] Error fetching applications:', error)
-    // 即使出错也返回空数组，避免页面崩溃
+   
     return []
   }
 }
@@ -117,7 +117,7 @@ export function LineGroupPage() {
     enabled: !!user,
   })
   
-  // 调试：打印 myApplications 数据
+ 
   useEffect(() => {
     console.log('[LineGroupPage] useQuery state:', {
       user: !!user,
@@ -336,7 +336,7 @@ export function LineGroupPage() {
     console.log('[CreateRequest] createGroupRequest function:', typeof createGroupRequest)
     console.log('[CreateRequest] isCreatingRequest:', isCreatingRequest)
 
-    // 直接调用 mutation，不需要 try-catch，因为 React Query 会处理错误
+    
     console.log('[CreateRequest] About to call createGroupRequest...')
     createGroupRequest(requestData)
     console.log('[CreateRequest] createGroupRequest called (mutation is async, this is expected)')
@@ -379,22 +379,21 @@ export function LineGroupPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {groups.map((group) => {
-              // 查找用户对该群组的申请
+             
               const myApplication = myApplications.find((app) => app.group_id === group.id)
               const applicationStatus = myApplication?.status || null
               const isApproved = applicationStatus === 'approved'
               const isPending = applicationStatus === 'pending'
               const isRejected = applicationStatus === 'rejected'
               
-              // 获取 QR Code URL
-              // 如果已批准，优先使用 myApplication.group 中的 qr_code_url，否则使用 group 中的
+            
               let qrCodeUrl: string | null = null
               if (isApproved) {
-                // 检查 myApplication.group.qr_code_url（可能为空字符串）
+                
                 const appQrCode = myApplication?.group?.qr_code_url
                 const groupQrCode = group.qr_code_url
                 
-                // 优先使用 myApplication.group 中的，但要确保不是空字符串
+                
                 if (appQrCode && appQrCode.trim() !== '') {
                   qrCodeUrl = appQrCode
                 } else if (groupQrCode && groupQrCode.trim() !== '') {
@@ -403,11 +402,11 @@ export function LineGroupPage() {
                   qrCodeUrl = null
                 }
               } else {
-                // 未批准的用户不应该看到 QR Code
+               
                 qrCodeUrl = null
               }
               
-              // 调试日志 - 对所有群组都输出，方便诊断
+              
               console.log(`[LineGroupPage] Group ${group.name}:`, {
                 groupId: group.id,
                 isApproved,
@@ -442,7 +441,7 @@ export function LineGroupPage() {
                     </div>
                   </div>
 
-                  {/* QR Code 区域 - 已批准用户显示 QR Code，未批准用户显示占位符 */}
+                 
                   <div className="mb-4">
                     <div className="text-sm font-semibold text-primary mb-2">QR Code:</div>
                     <div className="flex justify-center">
@@ -453,7 +452,7 @@ export function LineGroupPage() {
                           className="max-w-full h-auto max-h-64 rounded-lg border border-primary/10 shadow-sm"
                           style={{ maxWidth: '300px', minHeight: '300px', objectFit: 'contain' }}
                           onError={(e) => {
-                            // 如果图片加载失败，显示错误提示
+                            
                             const target = e.target as HTMLImageElement
                             target.style.display = 'none'
                             const parent = target.parentElement

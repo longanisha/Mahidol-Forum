@@ -22,9 +22,9 @@ class AdminLoginResponse(BaseModel):
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-  """验证密码"""
+
   try:
-    # 确保密码不超过 72 字节
+  
     password_bytes = plain_password.encode('utf-8')
     if len(password_bytes) > 72:
       password_bytes = password_bytes[:72]
@@ -35,8 +35,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-  """生成密码哈希"""
-  # bcrypt 限制密码长度为 72 字节
+
   password_bytes = password.encode('utf-8')
   if len(password_bytes) > 72:
     password_bytes = password_bytes[:72]
@@ -50,11 +49,11 @@ async def admin_login(
   credentials: AdminLoginRequest,
   supabase: SupabaseClientDep,
 ):
-  """Admin 登录 - 只验证账号密码"""
+
   try:
     print(f"[admin_login] Attempting login for email: {credentials.email}")
     
-    # 查询 admin（不使用 .single()，因为可能没有记录）
+
     response = (
       supabase.table('admins')
       .select('id, email, password_hash, username, is_active')

@@ -17,7 +17,7 @@ export function AdminLoginPage() {
     try {
       console.log('[AdminLogin] Attempting to login with email:', email.trim())
       
-      // 调用后端 API 验证账号密码
+    
       const response = await apiFetch<{
         success: boolean
         admin_id: string
@@ -37,14 +37,14 @@ export function AdminLoginPage() {
       if (response.success) {
         console.log('[AdminLogin] ✅ Login successful, redirecting to admin dashboard...')
         
-        // 存储 admin 信息到 localStorage（可选）
+
         localStorage.setItem('admin_id', response.admin_id)
         localStorage.setItem('admin_email', response.email)
         if (response.username) {
           localStorage.setItem('admin_username', response.username)
         }
         
-        // 立即重定向
+
         window.location.href = '/admin'
       } else {
         setError(response.message || 'Login failed, please try again.')

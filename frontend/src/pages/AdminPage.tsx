@@ -237,11 +237,11 @@ export function AdminPage() {
   const [editUserPassword, setEditUserPassword] = useState('')
   const [editUserPoints, setEditUserPoints] = useState<number>(0)
   
-  // 简化的权限检查：只检查 localStorage 中是否有 admin_id
+  // localStorage admin_id
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
   useEffect(() => {
-    // 检查是否有 admin 登录信息
+    // admin
     const adminId = localStorage.getItem('admin_id')
     const adminEmail = localStorage.getItem('admin_email')
     
@@ -285,7 +285,7 @@ export function AdminPage() {
     enabled: isAuthorized === true && !!selectedGroup && activeMenu === 'applications',
   })
 
-  // 为每个群组获取 pending applications 数量
+  // Pending applications
   const { data: allGroupsApplications = {} } = useQuery({
     queryKey: ['admin', 'groups-applications-count', groups.map(g => g.id).join(',')],
     queryFn: async () => {
@@ -293,7 +293,7 @@ export function AdminPage() {
       const { adminId, adminEmail } = getAdminCredentials()
       const counts: Record<string, number> = {}
       
-      // 为每个群组获取所有 applications，然后计算 pending 数量
+      // Applications，Pending
       await Promise.all(
         groups.map(async (group) => {
           try {
@@ -741,13 +741,12 @@ export function AdminPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 验证文件类型
+ 
     if (!file.type.startsWith('image/')) {
       alert('Please select an image file')
       return
     }
 
-    // 验证文件大小（最大 5MB）
     if (file.size > 5 * 1024 * 1024) {
       alert('Image size should be less than 5MB')
       return
@@ -755,7 +754,6 @@ export function AdminPage() {
 
     setQrCodeFile(file)
 
-    // 创建预览
     const reader = new FileReader()
     reader.onloadend = () => {
       setQrCodePreview(reader.result as string)
@@ -766,13 +764,13 @@ export function AdminPage() {
   const uploadQrCodeToSupabase = async (file: File): Promise<string> => {
     setIsUploadingQrCode(true)
     try {
-      // 生成唯一文件名
+ 
       const fileExt = file.name.split('.').pop()
       const adminId = localStorage.getItem('admin_id') || 'admin'
       const fileName = `${adminId}/${Date.now()}.${fileExt}`
       const filePath = `line-group-qr-codes/${fileName}`
 
-      // 上传到 Supabase Storage
+  
       const { error } = await supabase.storage
         .from('line-group-qr-codes')
         .upload(filePath, file, {
@@ -787,7 +785,7 @@ export function AdminPage() {
         throw error
       }
 
-      // 获取公共 URL
+ 
       const { data: urlData } = supabase.storage
         .from('line-group-qr-codes')
         .getPublicUrl(filePath)
@@ -812,7 +810,7 @@ export function AdminPage() {
 
     let qrCodeUrl = newGroupQrCode.trim()
 
-    // 如果有上传的文件，先上传文件
+
     if (qrCodeFile) {
       try {
         qrCodeUrl = await uploadQrCodeToSupabase(qrCodeFile)
@@ -1005,16 +1003,15 @@ export function AdminPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {paginatedUsers.map((user, index) => {
-                        // 计算实际排名：如果按积分排序，排名应该基于所有用户中的位置
-                        // 否则使用页面索引
+               
                         let ranking: number
                         if (sortBy === 'points') {
-                          // 按积分排序时，计算在所有已排序用户中的排名
+                       
                           const allSortedUsers = filteredAndSortedUsers
                           const userIndex = allSortedUsers.findIndex(u => u.id === user.id)
                           ranking = userIndex >= 0 ? userIndex + 1 : (currentPage - 1) * pageSize + index + 1
                         } else {
-                          // 其他排序方式使用页面索引
+                      
                           ranking = (currentPage - 1) * pageSize + index + 1
                         }
                         return (
@@ -1511,7 +1508,7 @@ export function AdminPage() {
                         QR Code Image *
                       </label>
                       
-                      {/* 文件上传 */}
+        
                       <div className="mb-3">
                         <input
                           ref={fileInputRef}
@@ -1547,7 +1544,7 @@ export function AdminPage() {
                         )}
                       </div>
 
-                      {/* 或者输入 URL（可选） */}
+           
                       <div className="mt-3">
                         <p className="text-xs text-primary/60 mb-2">Or provide QR code URL:</p>
                         <input

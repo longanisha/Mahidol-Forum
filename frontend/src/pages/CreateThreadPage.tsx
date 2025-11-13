@@ -44,25 +44,25 @@ export function CreateThreadPage() {
     }
   }, [title])
 
-  // 延迟加载 hot-tags，让页面先渲染，不阻塞初始加载
+
   useEffect(() => {
-    // 使用 setTimeout 延迟加载，让页面先渲染完成
+
     const timer = setTimeout(() => {
       setShouldLoadTags(true)
-    }, 100) // 延迟100ms，足够让页面先渲染
+    }, 100) 
 
     return () => {
       clearTimeout(timer)
     }
   }, [])
 
-  // 延迟加载 hot-tags，不阻塞页面初始渲染
+
   const { data: hotTags = [], isLoading: tagsLoading, isError: tagsError } = useQuery({
     queryKey: ['hot-tags'],
     queryFn: fetchHotTags,
-    enabled: shouldLoadTags, // 只有在 shouldLoadTags 为 true 时才请求
-    staleTime: 10 * 60 * 1000, // 10 minutes - 热门标签更新不频繁，可以缓存更久
-    gcTime: 30 * 60 * 1000, // 30 minutes - 缓存保留时间
+    enabled: shouldLoadTags, 
+    staleTime: 10 * 60 * 1000, // 10 minutes 
+    gcTime: 30 * 60 * 1000, // 30 minutes 
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   })
