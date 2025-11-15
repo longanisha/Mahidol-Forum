@@ -1,4 +1,5 @@
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { apiFetch } from '../../lib/api'
@@ -8,11 +9,7 @@ type ForumSidebarProps = {
   totalThreads?: number
 }
 
-const MENU_ITEMS = [
-  { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
-  { id: 'line-group', label: 'Line Group', description: 'Join LINE groups and communities' },
-  { id: 'announcements', label: 'Announcements', description: 'Moderation and campus updates' },
-]
+// MENU_ITEMS will be defined inside the component to use translation
 
 type Announcement = {
   id: string
@@ -66,10 +63,17 @@ function formatNumber(num: number): string {
 }
 
 export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) {
+  const { t } = useTranslation()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const currentView = searchParams.get('view') || 'discussions'
+
+  const MENU_ITEMS = [
+    { id: 'discussions', label: t('header.discussions'), description: t('header.discussionsDesc') },
+    { id: 'line-group', label: t('header.lineGroup'), description: t('header.lineGroupDesc') },
+    { id: 'announcements', label: t('header.announcements'), description: t('header.announcementsDesc') },
+  ]
   
   // 页面加载时始终获取最新的 announcements（因为侧边栏在所有视图下都显示）
   const { data: announcements = [] } = useQuery({
@@ -97,8 +101,8 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
   })
 
   const communityStats = [
-    { label: 'Active members', value: stats ? formatNumber(stats.active_members) : '0' },
-    { label: 'Threads this week', value: stats ? stats.threads_this_week.toString() : '0' },
+    { label: t('home.activeMembers'), value: stats ? formatNumber(stats.active_members) : '0' },
+    { label: t('home.threadsThisWeek'), value: stats ? stats.threads_this_week.toString() : '0' },
   ]
   
   const handleMenuClick = (itemId: string) => {
@@ -128,28 +132,28 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     <aside className="w-64 shrink-0 hidden lg:block space-y-4">
       <div className="bg-white rounded-2xl p-5 border border-primary/10 shadow-sm">
         <p className="text-sm text-primary/70 mb-4">
-          Share an insight, ask a question, or help someone plan their Mahidol journey.
+          {t('home.shareInsight')}
         </p>
         {user ? (
           <Link
             to="/create-thread"
             className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition"
           >
-            Post a topic
+            {t('home.postTopic')}
           </Link>
         ) : (
           <Link
             to="/login"
             className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition"
           >
-            Login to Post
+            {t('home.loginToPost')}
           </Link>
         )}
       </div>
 
       <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm">
         <div className="text-xs font-semibold text-primary/50 uppercase tracking-wider mb-3">
-          Menu
+          {t('common.menu')}
         </div>
         <ul className="space-y-1">
           {MENU_ITEMS.map((item) => {
@@ -194,9 +198,9 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
       <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm" data-announcements-section>
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-semibold text-primary/50 uppercase tracking-wider">
-            Announcements
+            {t('home.announcements')}
           </span>
-          <span className="text-xs text-primary/40">Updated daily</span>
+          <span className="text-xs text-primary/40">{t('home.updatedDaily')}</span>
         </div>
         <ul className="space-y-3">
           {announcements.length > 0 ? (
@@ -207,7 +211,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
               </li>
             ))
           ) : (
-            <li className="text-xs text-primary/40 italic">No announcements yet</li>
+            <li className="text-xs text-primary/40 italic">{t('home.noAnnouncementsYet')}</li>
           )}
         </ul>
       </div>
@@ -226,12 +230,12 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
       {/* Top 5 Points Ranking Card */}
       <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm">
         <div className="text-xs font-semibold text-primary/50 uppercase tracking-wider mb-3">
-          Top 5 Ranking
+          {t('home.topRanking')}
         </div>
         {topUsersLoading ? (
-          <div className="text-center py-4 text-primary/40 text-sm">Loading...</div>
+          <div className="text-center py-4 text-primary/40 text-sm">{t('common.loading')}</div>
         ) : topUsers.length === 0 ? (
-          <div className="text-center py-4 text-primary/40 text-sm">No data</div>
+          <div className="text-center py-4 text-primary/40 text-sm">{t('home.noData')}</div>
         ) : (
           <div className="space-y-2">
             {topUsers.map((user, index) => (
@@ -257,12 +261,12 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
                     <div className="text-sm font-semibold text-primary truncate">
                       {user.username || 'Anonymous'}
                     </div>
-                    <div className="text-xs text-primary/50">Level {user.level || 1}</div>
+                    <div className="text-xs text-primary/50">{t('home.level')} {user.level || 1}</div>
                   </div>
                 </div>
                 <div className="flex-shrink-0 ml-2 text-right">
                   <div className="text-sm font-bold text-accent">{user.total_points || 0}</div>
-                  <div className="text-xs text-primary/40">pts</div>
+                  <div className="text-xs text-primary/40">{t('home.pts')}</div>
                 </div>
               </div>
             ))}

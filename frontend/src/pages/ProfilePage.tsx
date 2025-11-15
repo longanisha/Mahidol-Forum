@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
@@ -184,6 +185,7 @@ async function fetchRepliesToMyPosts(accessToken: string | null, postId: string)
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const { user, profile, accessToken, refreshProfile, updateProfile } = useAuth()
   const queryClient = useQueryClient()
   
@@ -762,12 +764,12 @@ export function ProfilePage() {
             >
               ← Back to Forum
             </Link>
-            <h1 className="text-3xl font-bold text-primary mt-4">My Profile</h1>
+            <h1 className="text-3xl font-bold text-primary mt-4">{t('profile.title')}</h1>
           </div>
           <div className="bg-white rounded-2xl p-8 border border-primary/10 shadow-sm text-center">
-            <p className="text-primary/70 mb-4">Please login to view your profile.</p>
+            <p className="text-primary/70 mb-4">{t('common.login')}</p>
             <Link to="/login" className="text-accent hover:underline font-semibold">
-              Go to Login
+              {t('common.login')}
             </Link>
           </div>
         </div>
@@ -785,7 +787,7 @@ export function ProfilePage() {
           >
             ← Back to Forum
           </Link>
-          <h1 className="text-3xl font-bold text-primary mt-4">My Profile</h1>
+          <h1 className="text-3xl font-bold text-primary mt-4">{t('profile.title')}</h1>
         </div>
 
         {/* Tabs */}
@@ -802,14 +804,14 @@ export function ProfilePage() {
                 }`}
               >
                 {tab === 'group-requests' 
-                  ? 'Group Requests' 
+                  ? t('profile.groupRequests')
                   : tab === 'my-posts' 
-                    ? 'My Posts' 
+                    ? t('profile.myPosts')
                     : tab === 'replies' 
-                      ? 'Replies' 
+                      ? t('profile.myReplies')
                       : tab === 'points-history'
-                        ? 'Points History'
-                        : tab}
+                        ? t('profile.pointsHistory')
+                        : t('profile.title')}
               </button>
             ))}
           </div>

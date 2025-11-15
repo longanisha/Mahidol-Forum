@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { translateTag } from '../../utils/tagTranslations'
 
 export type ThreadWithAuthor = {
   id: string
@@ -79,6 +81,7 @@ function synthesizeStat(id: string, multiplier: number, base: number) {
 }
 
 export function ThreadCard({ thread }: ThreadCardProps) {
+  const { t, i18n } = useTranslation()
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [showReportModal, setShowReportModal] = useState(false)
@@ -176,12 +179,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         <div className="flex items-center gap-2">
           {thread.is_pinned && (
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-accent/20 text-accent flex items-center gap-1">
-              📌 Pinned
+              📌 {t('thread.pinned')}
             </span>
           )}
           {thread.is_closed && (
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary/70">
-              Closed
+              {t('thread.closed')}
             </span>
           )}
         </div>
@@ -217,7 +220,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             key={`${thread.id}-${tag}`}
             className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent/10 text-accent"
           >
-            {tag}
+            {translateTag(tag, i18n.language)}
           </span>
         ))}
       </div>
@@ -227,12 +230,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
           <div className="flex items-center gap-1.5 text-primary/60">
             <span aria-hidden="true">👁</span>
             <strong className="text-primary">{views}</strong>
-            <span className="text-xs">views</span>
+            <span className="text-xs">{t('home.views')}</span>
           </div>
           <div className="flex items-center gap-1.5 text-primary/60">
             <span aria-hidden="true">💬</span>
             <strong className="text-primary">{replies}</strong>
-            <span className="text-xs">replies</span>
+            <span className="text-xs">{t('home.replies')}</span>
           </div>
           {/* Vote buttons - only for real threads */}
           {thread.category !== 'Announcement' && thread.category !== 'LINE Group' && (
@@ -245,7 +248,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                     ? 'bg-accent/20 text-accent font-semibold'
                     : 'text-primary/60 hover:text-accent'
                 } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={user ? 'Upvote' : 'Login to upvote'}
+                title={user ? t('thread.upvote') : t('thread.loginToUpvote')}
               >
                 <span>⬆</span>
                 <span>{upvotes}</span>
@@ -258,7 +261,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                     ? 'bg-warm/20 text-warm font-semibold'
                     : 'text-primary/60 hover:text-warm'
                 } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={user ? 'Downvote' : 'Login to downvote'}
+                title={user ? t('thread.downvote') : t('thread.loginToDownvote')}
               >
                 <span>⬇</span>
                 <span>{downvotes}</span>
@@ -267,7 +270,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                 <button
                   onClick={handleReport}
                   className="text-xs text-warm hover:text-warm/80 transition flex-shrink-0"
-                  title="Report this thread"
+                  title={t('thread.reportThisThread')}
                 >
                   ⚠️
                 </button>
@@ -281,7 +284,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             to={`/thread/${thread.id}`}
             className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
           >
-            View post
+            {t('home.viewPost')}
           </Link>
         )}
       </footer>
@@ -290,17 +293,25 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+<<<<<<< Updated upstream
             <h3 className="text-xl font-bold text-primary mb-4">举报帖子</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
                   原因 <span className="text-warm">*</span>
+=======
+            <h3 className="text-xl font-bold text-primary mb-4">{t('post.reportComment')}</h3>
+            <form onSubmit={handleSubmitReport} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-primary mb-2">
+                  {t('post.reason')} <span className="text-warm">*</span>
+>>>>>>> Stashed changes
                 </label>
                 <input
                   type="text"
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  placeholder="Brief reason for reporting..."
+                  placeholder={t('post.briefReason')}
                   className="w-full px-4 py-2 rounded-lg border border-primary/15 focus:outline-none focus:ring-2 focus:ring-accent/30"
                   required
                 />

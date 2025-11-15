@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export function LoginPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -24,13 +26,13 @@ export function LoginPage() {
 
     const trimmedEmail = email.trim()
     if (!trimmedEmail) {
-      setError('Please enter your email address.')
+      setError(t('auth.enterEmail'))
       setLoading(false)
       return
     }
 
     if (!password) {
-      setError('Please enter your password.')
+      setError(t('auth.enterPassword'))
       setLoading(false)
       return
     }
@@ -44,11 +46,11 @@ export function LoginPage() {
       // Provide more user-friendly error messages
       let errorMessage = signInError.message
       if (signInError.message.includes('Invalid login credentials')) {
-        errorMessage = 'Invalid email or password. Please check your credentials and try again.'
+        errorMessage = t('auth.invalidCredentials')
       } else if (signInError.message.includes('Email not confirmed')) {
-        errorMessage = 'Please verify your email address before logging in. Check your inbox for a confirmation email.'
+        errorMessage = t('auth.emailNotConfirmed')
       } else if (signInError.status === 400) {
-        errorMessage = 'Invalid request. Please check that your email and password are correct.'
+        errorMessage = t('auth.invalidRequest')
       }
       setError(errorMessage)
       setLoading(false)
@@ -56,7 +58,7 @@ export function LoginPage() {
     }
 
     if (!data.user) {
-      setError('Login failed. Please try again.')
+      setError(t('auth.loginError'))
       setLoading(false)
       return
     }
@@ -84,14 +86,14 @@ export function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Welcome back</h1>
-            <p className="text-primary/70">Log in to your account here!</p>
+            <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.welcomeBack')}</h1>
+            <p className="text-primary/70">{t('auth.loginToAccount')}</p>
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-primary mb-2">
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id="email"
@@ -106,7 +108,7 @@ export function LoginPage() {
 
             <div>
               <label htmlFor="password" className="block text-sm font-semibold text-primary mb-2">
-                Password
+                {t('auth.password')}
               </label>
               <input
                 id="password"
@@ -130,14 +132,14 @@ export function LoginPage() {
               disabled={loading}
               className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-primary to-accent hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Signing in…' : 'Login'}
+              {loading ? t('auth.signingIn') : t('auth.login')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-primary/70">
-            New to Mahidol Forum?{' '}
+            {t('auth.noAccount')}{' '}
             <Link to="/register" className="text-accent hover:underline font-semibold">
-              Create an account
+              {t('auth.createAccount')}
             </Link>
           </p>
         </div>
