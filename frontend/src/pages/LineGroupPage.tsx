@@ -1,4 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -87,6 +88,7 @@ async function fetchMyApplications(accessToken: string | null): Promise<LineGrou
 }
 
 export function LineGroupPage() {
+  const { t } = useTranslation()
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [selectedGroup, setSelectedGroup] = useState<LineGroup | null>(null)
@@ -555,7 +557,7 @@ export function LineGroupPage() {
                     disabled={isApplying}
                     className="flex-1 px-6 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-accent to-primary hover:shadow-lg transition disabled:opacity-50"
                   >
-                    {isApplying ? 'Submitting...' : 'Submit Application'}
+                    {isApplying ? t('lineGroup.submitting') : t('lineGroup.requestInvite')}
                   </button>
                   <button
                     type="button"
@@ -566,7 +568,7 @@ export function LineGroupPage() {
                     }}
                     className="px-6 py-2.5 rounded-xl font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>
@@ -614,7 +616,7 @@ export function LineGroupPage() {
                     disabled={isReporting || !reportReason.trim()}
                     className="flex-1 px-6 py-2.5 rounded-xl font-semibold text-white bg-warm hover:shadow-lg transition disabled:opacity-50"
                   >
-                    {isReporting ? 'Submitting...' : 'Submit Report'}
+                    {isReporting ? t('lineGroup.submitting') : t('post.submitReport')}
                   </button>
                   <button
                     type="button"
@@ -626,7 +628,7 @@ export function LineGroupPage() {
                     }}
                     className="px-6 py-2.5 rounded-xl font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </form>
@@ -639,7 +641,7 @@ export function LineGroupPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-6 max-w-md w-full">
               <h2 className="text-2xl font-bold text-primary mb-4">
-                Request to Create LINE Group
+                {t('lineGroup.requestToCreate')}
               </h2>
               <form 
                 onSubmit={handleSubmitCreateRequest} 
@@ -648,13 +650,13 @@ export function LineGroupPage() {
               >
                 <div>
                   <label className="block text-sm font-semibold text-primary mb-2">
-                    Group Name *
+                    {t('lineGroup.groupName')} *
                   </label>
                   <input
                     type="text"
                     value={createRequestName}
                     onChange={(e) => setCreateRequestName(e.target.value)}
-                    placeholder="Enter group name..."
+                    placeholder={t('lineGroup.enterGroupName')}
                     required
                     minLength={3}
                     maxLength={100}
@@ -663,12 +665,12 @@ export function LineGroupPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-primary mb-2">
-                    Description (optional)
+                    {t('lineGroup.description')}
                   </label>
                   <textarea
                     value={createRequestDescription}
                     onChange={(e) => setCreateRequestDescription(e.target.value)}
-                    placeholder="Describe your LINE group..."
+                    placeholder={t('lineGroup.describeGroup')}
                     rows={3}
                     maxLength={500}
                     className="w-full px-4 py-2.5 rounded-xl border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
@@ -688,7 +690,7 @@ export function LineGroupPage() {
                   />
                   {createRequestQrCodeUrl && (
                     <div className="mt-3">
-                      <p className="text-xs text-primary/60 mb-2">Preview:</p>
+                      <p className="text-xs text-primary/60 mb-2">{t('lineGroup.preview')}:</p>
                       <div className="flex justify-center">
                         <img
                           src={createRequestQrCodeUrl}
@@ -737,7 +739,7 @@ export function LineGroupPage() {
                       }
                     }}
                   >
-                    {isCreatingRequest ? 'Submitting...' : 'Submit Request'}
+                    {isCreatingRequest ? t('lineGroup.submittingRequest') : t('lineGroup.submitRequest')}
                   </button>
                   <button
                     type="button"
@@ -749,7 +751,7 @@ export function LineGroupPage() {
                     }}
                     className="px-6 py-2.5 rounded-xl font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
                   >
-                    Cancel
+                    {t('lineGroup.cancel')}
                   </button>
                 </div>
               </form>

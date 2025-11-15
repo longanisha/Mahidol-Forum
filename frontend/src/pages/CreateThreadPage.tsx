@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { Link } from 'react-router-dom'
 import { RichTextEditor } from '../components/editor/RichTextEditor'
+import { translateTag } from '../utils/tagTranslations'
 
 type HotTag = {
   tag: string
@@ -22,6 +24,7 @@ async function fetchHotTags(): Promise<HotTag[]> {
 }
 
 export function CreateThreadPage() {
+  const { t, i18n } = useTranslation()
   const { user, accessToken } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -83,14 +86,14 @@ export function CreateThreadPage() {
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
       if (!user || !accessToken) {
-        throw new Error('You must be logged in to create a thread.')
+        throw new Error(t('createThread.mustBeLoggedIn'))
       }
 
       // Ensure all fields are properly formatted
       // tags is now required, so filter out empty tags and ensure they're strings
       const validTags = selectedTags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
       if (validTags.length === 0) {
-        throw new Error('At least one tag is required.')
+        throw new Error(t('createThread.atLeastOneTag'))
       }
       
       const requestBody: {
@@ -130,7 +133,7 @@ export function CreateThreadPage() {
       const message =
         mutationError instanceof Error
           ? mutationError.message
-          : 'Failed to create thread. Please try again.'
+          : t('createThread.failed')
       setError(message)
     },
   })
@@ -138,18 +141,18 @@ export function CreateThreadPage() {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!title.trim()) {
-      setError('Please provide a thread title.')
+      setError(t('createThread.titlePlaceholder'))
       return
     }
     // Check if content has actual text (not just HTML tags)
     const textContent = content.replace(/<[^>]*>/g, '').trim()
     if (!textContent) {
-      setError('Please provide thread content.')
+      setError(t('createThread.content'))
       return
     }
     // Check if at least one tag is selected
     if (!selectedTags || selectedTags.length === 0) {
-      setError('Please select at least one tag.')
+      setError(t('createThread.atLeastOneTag'))
       return
     }
     mutate()
@@ -166,9 +169,9 @@ export function CreateThreadPage() {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-center">
-          <p className="text-primary/70 mb-4">Please login to create a thread.</p>
+          <p className="text-primary/70 mb-4">{t('createThread.mustBeLoggedIn')}</p>
           <Link to="/login" className="text-accent hover:underline font-semibold">
-            Go to Login
+            {t('common.login')}
           </Link>
         </div>
       </div>
@@ -185,27 +188,27 @@ export function CreateThreadPage() {
           >
             ← Back to Forum
           </Link>
-          <h1 className="text-3xl font-bold text-primary mt-4">Create a New Post</h1>
-          <p className="text-primary/70 mt-2">Share your thoughts, questions, or ideas with the community</p>
+          <h1 className="text-3xl font-bold text-primary mt-4">{t('createThread.title')}</h1>
+          <p className="text-primary/70 mt-2">{t('createThread.content')}</p>
         </div>
 
         <form className="bg-white rounded-2xl p-6 border border-primary/10 shadow-sm space-y-6" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="thread-title" className="block text-sm font-semibold text-primary mb-2">
-                Title *
+                {t('createThread.titlePlaceholder')} *
               </label>
               <input
                 id="thread-title"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="What's your question or topic?"
+                placeholder={t('createThread.titlePlaceholder')}
                 required
                 className="w-full px-4 py-2.5 rounded-xl border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
               />
               {similarPosts.length > 0 && (
                 <div className="mt-3 p-3 bg-warm/10 border border-warm/20 rounded-lg">
-                  <p className="text-xs font-semibold text-warm mb-2">Related posts you might want to check:</p>
+                  <p className="text-xs font-semibold text-warm mb-2">{t('createThread.similarPosts')}:</p>
                   <ul className="space-y-1.5">
                     {similarPosts.map((post) => (
                       <li key={post.id}>
@@ -224,7 +227,7 @@ export function CreateThreadPage() {
             </div>
             <div>
               <label htmlFor="thread-category" className="block text-sm font-semibold text-primary mb-2">
-                Category
+                {t('createThread.category')}
               </label>
               <select
                 id="thread-category"
@@ -243,7 +246,7 @@ export function CreateThreadPage() {
 
           <div>
             <label htmlFor="thread-content" className="block text-sm font-semibold text-primary mb-2">
-              Content *
+              {t('createThread.content')} *
             </label>
             <RichTextEditor
               content={content}
@@ -254,15 +257,15 @@ export function CreateThreadPage() {
 
           <div>
             <label className="block text-sm font-semibold text-primary mb-3">
-              Tags * <span className="text-primary/60 text-xs font-normal">(at least one tag is required)</span>
+              {t('createThread.tags')} * <span className="text-primary/60 text-xs font-normal">({t('createThread.atLeastOneTag')})</span>
             </label>
             {tagsLoading ? (
-              <div className="text-sm text-primary/60">Loading tags...</div>
+              <div className="text-sm text-primary/60">{t('common.loading')}</div>
             ) : tagsError ? (
-              <div className="text-sm text-warm">Failed to load tags. Please refresh the page to try again.</div>
+              <div className="text-sm text-warm">{t('common.error')}</div>
             ) : sortedHotTags.length === 0 ? (
               <div className="text-sm text-warm mb-3">
-                No tags available yet. Please contact an administrator to add tags to the system.
+                {t('createThread.hotTags')}
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -282,7 +285,7 @@ export function CreateThreadPage() {
                       {isHot && (
                         <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
                       )}
-                      {hotTag.tag} ({hotTag.count})
+                      {translateTag(hotTag.tag, i18n.language)} ({hotTag.count})
                     </button>
                   )
                 })}
@@ -291,13 +294,13 @@ export function CreateThreadPage() {
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedTags.length > 0 ? (
                 <>
-                  <span className="text-xs text-primary/60">Selected ({selectedTags.length}/10):</span>
+                  <span className="text-xs text-primary/60">{t('common.filter')} ({selectedTags.length}/10):</span>
                   {selectedTags.map((tag) => (
                     <span
                       key={tag}
                       className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent"
                     >
-                      {tag}
+                      {translateTag(tag, i18n.language)}
                       <button
                         type="button"
                         onClick={() => handleTagToggle(tag)}
@@ -309,7 +312,7 @@ export function CreateThreadPage() {
                   ))}
                 </>
               ) : (
-                <span className="text-xs text-warm">Please select at least one tag to continue.</span>
+                <span className="text-xs text-warm">{t('createThread.atLeastOneTag')}</span>
               )}
             </div>
           </div>
@@ -326,14 +329,14 @@ export function CreateThreadPage() {
               onClick={() => navigate('/')}
               className="px-5 py-2.5 rounded-xl font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={isPending}
               className="px-8 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-primary to-accent hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isPending ? 'Posting…' : 'Post it'}
+              {isPending ? t('createThread.creating') : t('createThread.create')}
             </button>
           </div>
         </form>

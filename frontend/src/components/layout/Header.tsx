@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
-
-const MENU_ITEMS = [
-  { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
-  { id: 'line-group', label: 'Line Group', description: 'Join LINE groups and communities' },
-  { id: 'announcements', label: 'Announcements', description: 'Moderation and campus updates' },
-]
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 export function Header() {
+  const { t } = useTranslation()
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -16,6 +13,12 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const MENU_ITEMS = [
+    { id: 'discussions', label: t('header.discussions'), description: t('header.discussionsDesc') },
+    { id: 'line-group', label: t('header.lineGroup'), description: t('header.lineGroupDesc') },
+    { id: 'announcements', label: t('header.announcements'), description: t('header.announcementsDesc') },
+  ]
   
   // 在 admin 页面隐藏导航项
   const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin')
@@ -161,12 +164,12 @@ export function Header() {
             <Link to="/" className="flex items-center gap-3 text-primary hover:opacity-80 transition">
               <img 
                 src="/forum_logo.png" 
-                alt="Mahidol Forum" 
+                alt={t('header.mahidolForum')} 
                 className="h-10 w-auto"
               />
               <div>
-                <div className="font-bold text-lg leading-tight">Mahidol Forum</div>
-                <div className="text-xs text-primary/60">Connect · Learn · Inspire</div>
+                <div className="font-bold text-lg leading-tight">{t('header.mahidolForum')}</div>
+                <div className="text-xs text-primary/60">{t('header.tagline')}</div>
               </div>
             </Link>
           </div>
@@ -179,7 +182,7 @@ export function Header() {
             >
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="text-xs font-semibold text-primary/50 uppercase tracking-wider mb-3">
-                  Menu
+                  {t('common.menu')}
                 </div>
                 <ul className="space-y-1">
                   {MENU_ITEMS.map((item) => {
@@ -220,7 +223,7 @@ export function Header() {
               <Link
                 to="/profile"
                 className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative shrink-0"
-                title="View profile"
+                title={t('common.viewProfile')}
               >
                 {profile?.avatar_url && profile.avatar_url.trim() !== '' && !avatarError ? (
                   <img
@@ -246,19 +249,9 @@ export function Header() {
               </Link>
               <div className="hidden sm:flex items-center gap-2">
                 <div className="text-sm font-semibold text-primary">
-                  {profile?.username || user.email?.split('@')[0] || 'Member'}
+                  {profile?.username || user.email?.split('@')[0] || t('common.member')}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Language switcher - placeholder
-                    console.log('Language switcher clicked')
-                  }}
-                  className="p-1.5 rounded hover:bg-primary/10 transition"
-                  title="Change language"
-                >
-                  🌐
-                </button>
+                <LanguageSwitcher />
                 <button
                   type="button"
                   onClick={(e) => {
@@ -269,23 +262,24 @@ export function Header() {
                   }}
                   className="px-3 py-1.5 text-sm font-semibold text-warm bg-warm/10 hover:bg-warm/20 rounded-full transition"
                 >
-                  Sign out
+                  {t('common.signOut')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <LanguageSwitcher />
               <Link
                 to="/login"
                 className="px-4 py-2 rounded-full font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition"
               >
-                Login
+                {t('common.login')}
               </Link>
               <Link
                 to="/register"
                 className="px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-primary to-accent hover:shadow-lg transition shadow-md"
               >
-                Register
+                {t('common.register')}
               </Link>
             </div>
           )}

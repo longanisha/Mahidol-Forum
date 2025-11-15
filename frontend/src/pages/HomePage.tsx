@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../lib/api'
 import { ThreadCard, type ThreadWithAuthor } from '../components/forum/ThreadCard'
 import { useAuth } from '../context/AuthContext'
@@ -97,6 +98,7 @@ async function fetchMyApplications(accessToken: string | null): Promise<LineGrou
 }
 
 export function HomePage() {
+  const { t } = useTranslation()
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -651,25 +653,25 @@ export function HomePage() {
               <div className="flex items-start justify-between gap-4 mb-6">
                 <div>
                   <p className="text-xs font-semibold text-accent uppercase tracking-wider mb-2">
-                    Mahidol Campus Community
+                    {t('home.campusCommunity')}
                   </p>
                   <h1 className="text-3xl font-bold text-primary mb-2">
                     {viewMode === 'announcements' 
-                      ? 'Announcements' 
+                      ? t('home.announcements')
                       : viewMode === 'line-groups'
-                      ? 'LINE Groups'
+                      ? t('home.lineGroups')
                       : viewMode === 'all' 
-                      ? 'Discussions & Announcements' 
-                      : 'Discussions'}
+                      ? t('home.discussionsAndAnnouncements')
+                      : t('home.discussions')}
                   </h1>
                   <p className="text-primary/70">
                     {viewMode === 'announcements' 
-                      ? 'Official announcements and updates from administrators'
+                      ? t('home.announcementsDesc')
                       : viewMode === 'line-groups'
-                      ? 'Join LINE groups and communities to connect with fellow students and alumni'
+                      ? t('home.lineGroupsDesc')
                       : viewMode === 'all'
-                      ? 'Fresh updates from students, staff, and alumni — filter by tag or search to find the insight you need.'
-                      : 'Fresh updates from students, staff, and alumni — filter by tag or search to find the insight you need.'}
+                      ? t('home.discussionsAndAnnouncementsDesc')
+                      : t('home.discussionsDesc')}
                   </p>
                 </div>
                 {viewMode === 'line-groups' ? (
@@ -678,7 +680,7 @@ export function HomePage() {
                       onClick={() => setShowCreateRequestModal(true)}
                       className="px-6 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-accent to-primary hover:shadow-lg transition shrink-0"
                     >
-                      + Create Group Request
+                      + {t('home.createGroupRequest')}
                     </button>
                   )
                 ) : user ? (
@@ -686,14 +688,14 @@ export function HomePage() {
                     to="/create-thread"
                     className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition shrink-0 inline-block"
                   >
-                    Post a topic
+                    {t('home.postTopic')}
                   </Link>
                 ) : (
                   <Link
                     to="/login"
                     className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition shrink-0 inline-block"
                   >
-                    Login to Post
+                    {t('home.loginToPost')}
                   </Link>
                 )}
               </div>
@@ -714,7 +716,7 @@ export function HomePage() {
                   {(viewMode === 'discussions' || viewMode === 'announcements') && (
                     <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-primary/70">Sort by:</span>
+                        <span className="text-sm font-semibold text-primary/70">{t('home.sortBy')}</span>
                         <div className="flex gap-2">
                           <button
                             onClick={() => {
@@ -730,7 +732,7 @@ export function HomePage() {
                                 : 'bg-primary/5 text-primary hover:bg-primary/10'
                             }`}
                           >
-                            Latest
+                            {t('home.latest')}
                           </button>
                           <button
                             onClick={() => {
@@ -746,7 +748,7 @@ export function HomePage() {
                                 : 'bg-primary/5 text-primary hover:bg-primary/10'
                             }`}
                           >
-                            Most Views
+                            {t('home.mostViewed')}
                           </button>
                           <button
                             onClick={() => {
@@ -762,7 +764,7 @@ export function HomePage() {
                                 : 'bg-primary/5 text-primary hover:bg-primary/10'
                             }`}
                           >
-                            Most Replies
+                            {t('home.mostReplied')}
                           </button>
                         </div>
                       </div>
@@ -805,10 +807,10 @@ export function HomePage() {
                 // LINE Groups 视图：显示卡片布局
                 lineGroups.length === 0 ? (
                   <div className="bg-white rounded-2xl p-8 text-center border border-primary/10">
-                    <p className="text-primary/70">No LINE groups available yet.</p>
+                    <p className="text-primary/70">{t('home.noLineGroupsYet')}</p>
                     {user && (
                       <p className="text-sm text-primary/60 mt-2">
-                        You can request to create a new LINE group. Admin will review your request.
+                        {t('home.requestNewGroup')}
                       </p>
                     )}
                   </div>

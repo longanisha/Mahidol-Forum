@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -25,13 +27,13 @@ export function RegisterPage() {
 
     const trimmedEmail = email.trim()
     if (!trimmedEmail) {
-      setError('Please enter your email address.')
+      setError(t('auth.enterEmail'))
       setLoading(false)
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters long.')
+      setError(t('auth.passwordTooShort'))
       setLoading(false)
       return
     }
@@ -53,9 +55,9 @@ export function RegisterPage() {
     if (signUpError) {
       let errorMessage = signUpError.message
       if (signUpError.message.includes('already registered')) {
-        errorMessage = 'This email is already registered. Please log in instead.'
+        errorMessage = t('auth.emailAlreadyRegistered')
       } else if (signUpError.message.includes('Password')) {
-        errorMessage = 'Password is too weak. Please use a stronger password.'
+        errorMessage = t('auth.passwordTooWeak')
       }
       setError(errorMessage)
       setLoading(false)
@@ -63,7 +65,7 @@ export function RegisterPage() {
     }
 
     if (!data.user) {
-      setError('Registration failed. Please try again.')
+      setError(t('auth.registerError'))
       setLoading(false)
       return
     }
@@ -90,9 +92,7 @@ export function RegisterPage() {
 
     // If email confirmation is required, show a message
     if (data.user && !data.session) {
-      setError(
-        'Registration successful! Please check your email to verify your account before logging in.',
-      )
+      setError(t('auth.registrationSuccess'))
       setLoading(false)
       setTimeout(() => {
         navigate('/login')
@@ -117,14 +117,14 @@ export function RegisterPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border border-white/20">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-primary mb-2">Join the community</h1>
-            <p className="text-primary/70">Get started with your Mahidol account.</p>
+            <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.joinCommunity')}</h1>
+            <p className="text-primary/70">{t('auth.getStarted')}</p>
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="username" className="block text-sm font-semibold text-primary mb-2">
-                Display name
+                {t('auth.displayName')}
               </label>
               <input
                 id="username"
@@ -140,7 +140,7 @@ export function RegisterPage() {
                 htmlFor="register-email"
                 className="block text-sm font-semibold text-primary mb-2"
               >
-                Email
+                {t('auth.email')}
               </label>
               <input
                 id="register-email"
@@ -158,7 +158,7 @@ export function RegisterPage() {
                 htmlFor="register-password"
                 className="block text-sm font-semibold text-primary mb-2"
               >
-                Password
+                {t('auth.password')}
               </label>
               <input
                 id="register-password"
@@ -182,14 +182,14 @@ export function RegisterPage() {
               disabled={loading}
               className="w-full py-3 rounded-xl font-semibold text-white bg-gradient-to-r from-primary to-accent hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Creating account…' : 'Register'}
+              {loading ? t('auth.creatingAccount') : t('auth.register')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-primary/70">
-            Already have an account?{' '}
+            {t('auth.hasAccount')}{' '}
             <Link to="/login" className="text-accent hover:underline font-semibold">
-              Login
+              {t('auth.login')}
             </Link>
           </p>
         </div>
