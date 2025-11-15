@@ -39,6 +39,11 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   if (!headers.has('Content-Type') && options.body && !(options.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json')
   }
+  
+  // 禁用缓存，确保每次都获取最新数据
+  headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
+  headers.set('Pragma', 'no-cache')
+  headers.set('Expires', '0')
 
   if (options.accessToken) {
     console.log('[apiFetch] ====== Setting Authorization header ======')
@@ -70,10 +75,12 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     console.log('[apiFetch] URL:', url)
     console.log('[apiFetch] Method:', options.method || 'GET')
     console.log('[apiFetch] Headers:', Object.fromEntries(headers.entries()))
+    // 禁用fetch缓存，确保每次都从服务器获取最新数据
     response = await fetch(url, {
       ...options,
       headers,
       signal: options.signal, // 只使用用户提供的 signal，不自动创建超时
+      cache: 'no-store', // 禁用fetch缓存
     })
     console.log('[apiFetch] ====== Response received ======')
     console.log('[apiFetch] Status:', response.status, response.statusText)

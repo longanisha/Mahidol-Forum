@@ -107,8 +107,24 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
     <div className={depth > 0 ? 'ml-8 mt-3' : ''}>
       <article className={`bg-white rounded-2xl p-5 border border-primary/10 shadow-sm ${depth > 0 ? 'border-l-4 border-l-accent/30' : ''}`}>
         <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm shrink-0">
-            {post.author?.username?.[0]?.toUpperCase() || 'M'}
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden relative">
+            {post.author?.avatar_url ? (
+              <img
+                src={post.author.avatar_url}
+                alt={post.author?.username || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = post.author?.username?.[0]?.toUpperCase() || 'M'
+                  }
+                }}
+              />
+            ) : (
+              post.author?.username?.[0]?.toUpperCase() || 'M'
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <header className="flex items-center gap-3 mb-2">

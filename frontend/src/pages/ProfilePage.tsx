@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 type LineGroupCreationRequest = {
@@ -186,16 +186,77 @@ async function fetchRepliesToMyPosts(accessToken: string | null, postId: string)
 export function ProfilePage() {
   const { user, profile, accessToken, refreshProfile, updateProfile } = useAuth()
   const queryClient = useQueryClient()
+  const location = useLocation()
   
-  // 调试：打印 accessToken 状态
+  // 标记是否正在从数据库刷新 profile（用于区分显示数据库数据还是缓存数据）
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false)
+  
+  // 当页面加载时，强制刷新profile以确保显示最新数据（每次进入页面都刷新，不使用缓存）
   useEffect(() => {
-    console.log('[ProfilePage] ====== accessToken status ======')
-    console.log('[ProfilePage] accessToken exists:', !!accessToken)
-    console.log('[ProfilePage] accessToken type:', typeof accessToken)
-    console.log('[ProfilePage] accessToken length:', accessToken?.length || 0)
-    console.log('[ProfilePage] user exists:', !!user)
-    console.log('[ProfilePage] user ID:', user?.id || 'null')
-  }, [accessToken, user])
+    console.log('[ProfilePage] ====== useEffect triggered ======')
+    console.log('[ProfilePage] Pathname:', location.pathname)
+    console.log('[ProfilePage] User:', user ? `exists (${user.id})` : 'null')
+    console.log('[ProfilePage] AccessToken:', accessToken ? 'exists' : 'null')
+    console.log('[ProfilePage] refreshProfile function:', typeof refreshProfile)
+    
+    // 确保在 /profile 路径下
+    if (location.pathname !== '/profile') {
+      console.log('[ProfilePage] Not on /profile path, skipping refresh')
+      return
+    }
+    
+    // 检查用户和访问令牌是否准备好
+    if (!user || !accessToken) {
+      console.log('[ProfilePage] ⏳ Waiting for user and accessToken...', {
+        hasUser: !!user,
+        hasAccessToken: !!accessToken,
+      })
+      return
+    }
+    
+    // 检查 refreshProfile 函数是否存在
+    if (!refreshProfile || typeof refreshProfile !== 'function') {
+      console.error('[ProfilePage] ❌ refreshProfile is not a function!', refreshProfile)
+      return
+    }
+    
+    console.log('[ProfilePage] ====== ProfilePage loaded, forcing refresh from DATABASE ======')
+    console.log('[ProfilePage] Current profile before refresh:', {
+      username: profile?.username,
+      avatar_url: profile?.avatar_url,
+    })
+    console.log('[ProfilePage] User ID:', user.id)
+    console.log('[ProfilePage] AccessToken exists:', !!accessToken)
+    console.log('[ProfilePage] Calling refreshProfile(true) to get fresh data from DATABASE...')
+    
+    // 设置刷新状态，确保显示加载状态而不是旧的缓存数据
+    setIsRefreshingProfile(true)
+    
+    // 立即刷新，强制从服务器获取最新数据，不使用任何缓存
+    const refreshPromise = refreshProfile(true) // 传递true表示强制刷新，清除 sessionStorage 并直接从数据库获取
+    console.log('[ProfilePage] refreshProfile called, promise:', refreshPromise)
+    
+    refreshPromise
+      .then(() => {
+        console.log('[ProfilePage] ✅ Profile refreshed from DATABASE on page load')
+        console.log('[ProfilePage] Profile after refresh:', {
+          username: profile?.username,
+          avatar_url: profile?.avatar_url,
+        })
+        // refreshProfile 会更新 AuthContext 中的 profile 状态（直接从数据库获取）
+        // React 会自动重新渲染组件，displayUsername 会使用最新的 profile.username
+        setIsRefreshingProfile(false)
+      })
+      .catch((err) => {
+        console.error('[ProfilePage] ❌ Failed to refresh profile on page load:', err)
+        console.error('[ProfilePage] Error details:', err)
+        if (err instanceof Error) {
+          console.error('[ProfilePage] Error message:', err.message)
+          console.error('[ProfilePage] Error stack:', err.stack)
+        }
+        setIsRefreshingProfile(false)
+      })
+  }, [location.pathname, user?.id, accessToken, refreshProfile]) // 包含 refreshProfile 在依赖项中
   const [isEditing, setIsEditing] = useState(false)
   // 编辑模式下的输入值（独立于显示值）
   const [editingUsername, setEditingUsername] = useState('')
@@ -211,26 +272,37 @@ export function ProfilePage() {
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({})
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
 
-  // 初始化时设置 savedUsername，并在非编辑模式下同步 profile 的变化
+  // 同步 profile 的变化到 savedUsername（仅用于编辑模式）
+  // 注意：displayUsername 现在直接使用 profile.username，所以 savedUsername 主要用于编辑模式
   useEffect(() => {
     if (profile?.username !== undefined && !isEditing) {
-      // 只在非编辑模式下同步 profile 的变化到 savedUsername
-      // 这样可以避免编辑时被 profile 更新覆盖
+      // 如果不在编辑模式，同步 savedUsername 以便在进入编辑模式时使用
+      if (savedUsername !== profile.username) {
+        console.log('[ProfilePage] Profile username changed, syncing savedUsername:', {
+          old: savedUsername,
+          new: profile.username,
+        })
+        setSavedUsername(profile.username)
+      }
+    } else if (savedUsername === null && profile?.username !== undefined) {
+      // 初始化 savedUsername
+      console.log('[ProfilePage] Initializing savedUsername from profile:', profile.username)
       setSavedUsername(profile.username)
     }
-  }, [profile?.username, isEditing])
-  
-  // 初始化 savedUsername（只在组件首次加载时）
-  useEffect(() => {
-    if (savedUsername === null && profile?.username !== undefined) {
-      setSavedUsername(profile.username)
-    }
-  }, []) // 只在组件挂载时执行一次
+  }, [profile?.username, isEditing, savedUsername])
 
-  // 计算显示的 username：优先使用保存后的值，否则使用 profile
-  const displayUsername = savedUsername !== null 
-    ? savedUsername 
-    : (profile?.username || user?.email?.split('@')[0] || 'Member')
+  // 计算显示的 username：
+  // 1. 非编辑模式：直接使用 profile.username（来自 AuthContext，从数据库获取的最新数据）
+  // 2. 编辑模式：使用 editingUsername（用户正在编辑的值）
+  // 3. 回退：使用 savedUsername 或 profile.username 或 email
+  // 注意：在刷新期间（isRefreshingProfile=true），确保使用从数据库获取的最新 profile.username
+  // 如果 profile 存在且不在刷新状态，说明数据已经从数据库获取并更新
+  const displayUsername = isEditing
+    ? editingUsername  // 编辑模式：使用正在编辑的值
+    : (profile?.username ?? (isRefreshingProfile ? null : savedUsername) ?? user?.email?.split('@')[0] ?? 'Member')  // 非编辑模式：优先使用最新的 profile.username（数据库数据）
+  
+  // 如果正在刷新且 profile 不存在，显示加载状态
+  const isProfileLoading = isRefreshingProfile && !profile
 
   const { mutate: updateUserProfile, isPending } = useMutation({
     mutationFn: async () => {
@@ -278,10 +350,26 @@ export function ProfilePage() {
       console.log('[ProfilePage] Setting saved username to:', newUsername)
       setSavedUsername(newUsername)
       
-      // 异步刷新 AuthContext 中的 profile（不阻塞 UI）
-      refreshProfile().catch((err) => {
-        console.warn('[ProfilePage] Failed to refresh profile in context:', err)
-      })
+      // 立即更新 AuthContext 中的 profile，确保 Header 和其他组件同步更新
+      if (updatedProfile.username !== undefined || updatedProfile.avatar_url !== undefined) {
+        updateProfile({
+          username: updatedProfile.username,
+          avatar_url: updatedProfile.avatar_url,
+        })
+        console.log('[ProfilePage] Profile context updated immediately:', {
+          username: updatedProfile.username,
+          avatar_url: updatedProfile.avatar_url,
+        })
+      }
+      
+      // 后台刷新完整 profile 数据（确保数据一致性，从数据库获取最新数据）
+      refreshProfile(true) // 强制刷新，确保从数据库获取最新数据
+        .then(() => {
+          console.log('[ProfilePage] Profile context refreshed from database after update')
+        })
+        .catch((err) => {
+          console.warn('[ProfilePage] Failed to refresh profile in context:', err)
+        })
       
       setSuccess('Profile updated successfully!')
       setIsEditing(false)
@@ -560,18 +648,24 @@ export function ProfilePage() {
       // 立即更新 UI（乐观更新）
       queryClient.setQueryData(['points', 'profile'], (old: any) => {
         if (old) {
-          return { ...old, avatar_url: avatarUrl }
+          return { ...old, avatar_url: avatarUrl, username: updatedProfile.username }
         }
         return old
       })
       
-      // 立即更新 profile context，确保 Header 同步更新
-      updateProfile({ avatar_url: avatarUrl })
-      console.log('[Avatar] Profile context updated directly, Header should update immediately')
+      // 立即更新 profile context，确保 Header 同步更新（同时更新avatar_url和username）
+      updateProfile({ 
+        avatar_url: avatarUrl,
+        username: updatedProfile.username, // 同时更新username，确保完整同步
+      })
+      console.log('[Avatar] Profile context updated directly, Header should update immediately:', {
+        avatar_url: avatarUrl,
+        username: updatedProfile.username,
+      })
       
       // 后台刷新完整 profile 数据（确保数据一致性）
       refreshProfile().then(() => {
-        console.log('[Avatar] Profile context refreshed in background')
+        console.log('[Avatar] Profile context refreshed from backend')
       }).catch((err) => {
         console.warn('[Avatar] Failed to refresh profile:', err)
       })
@@ -829,19 +923,45 @@ export function ProfilePage() {
                 {success}
               </div>
             )}
+            
+            {/* 如果正在从数据库刷新 profile，显示加载提示 */}
+            {isRefreshingProfile && (
+              <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading profile from database...
+                </span>
+              </div>
+            )}
 
             <div className="space-y-6">
               <div className="flex items-center gap-6">
                 <div className="relative">
-                  {userProfile?.avatar_url ? (
+                  {/* 显示头像：优先使用从数据库获取的 profile.avatar_url */}
+                  {profile?.avatar_url && profile.avatar_url.trim() !== '' ? (
                     <img
-                      src={userProfile.avatar_url}
-                      alt={displayUsername}
+                      src={profile.avatar_url}
+                      alt={displayUsername || 'User'}
                       className="w-24 h-24 rounded-full object-cover border-2 border-primary/10"
+                      onError={(e) => {
+                        // 如果图片加载失败，显示首字母
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const parent = target.parentElement
+                        if (parent) {
+                          const fallback = document.createElement('div')
+                          fallback.className = 'w-24 h-24 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-bold text-2xl'
+                          fallback.textContent = (displayUsername || 'M')[0]?.toUpperCase() || 'M'
+                          parent.appendChild(fallback)
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-bold text-2xl">
-                      {displayUsername[0]?.toUpperCase() || 'M'}
+                      {(displayUsername || 'M')[0]?.toUpperCase() || 'M'}
                     </div>
                   )}
                   <button
@@ -873,9 +993,15 @@ export function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-primary">
-                    {displayUsername}
+                    {displayUsername || (isProfileLoading ? 'Loading...' : 'Member')}
                   </h2>
                   <p className="text-primary/60">{user.email}</p>
+                  {/* 调试信息：显示数据来源 */}
+                  {import.meta.env.DEV && (
+                    <p className="text-xs text-primary/40 mt-1">
+                      Profile data: {isRefreshingProfile ? 'Loading from database...' : profile ? 'From database (via AuthContext)' : 'Not loaded'}
+                    </p>
+                  )}
                   
                   {/* Points, Level, Ranking */}
                   <div className="mt-4 flex flex-wrap gap-4">

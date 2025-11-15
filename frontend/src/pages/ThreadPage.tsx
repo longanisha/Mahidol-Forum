@@ -194,8 +194,24 @@ export function ThreadPage() {
             <p className="text-primary/70 mb-4 leading-relaxed">{thread.summary}</p>
           )}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
-              {thread.author?.username?.[0]?.toUpperCase() || 'M'}
+            <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm overflow-hidden relative shrink-0">
+              {thread.author?.avatar_url ? (
+                <img
+                  src={thread.author.avatar_url}
+                  alt={thread.author?.username || 'User'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                    const parent = target.parentElement
+                    if (parent) {
+                      parent.innerHTML = thread.author?.username?.[0]?.toUpperCase() || 'M'
+                    }
+                  }}
+                />
+              ) : (
+                thread.author?.username?.[0]?.toUpperCase() || 'M'
+              )}
             </div>
             <div>
               <div className="font-semibold text-primary">

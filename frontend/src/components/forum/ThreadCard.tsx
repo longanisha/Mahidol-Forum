@@ -163,8 +163,24 @@ export function ThreadCard({ thread }: ThreadCardProps) {
     <article className="bg-white rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition p-5">
       <header className="flex items-center justify-between mb-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
-            {authorInitial}
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm overflow-hidden relative shrink-0">
+            {thread.author?.avatar_url ? (
+              <img
+                src={thread.author.avatar_url}
+                alt={thread.author?.username || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = authorInitial
+                  }
+                }}
+              />
+            ) : (
+              authorInitial
+            )}
           </div>
           <div>
             <div className="font-semibold text-sm text-primary">

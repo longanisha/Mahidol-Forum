@@ -18,7 +18,7 @@ type AuthContextValue = {
   loading: boolean
   signOut: () => Promise<void>
   accessToken: string | null
-  refreshProfile: () => Promise<void>
+  refreshProfile: (forceRefresh?: boolean) => Promise<void>
   updateProfile: (updates: Partial<ProfilesRow>) => void
 }
 
@@ -34,23 +34,80 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [profile, setProfile] = useState<ProfilesRow | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Profile 存储键名
+  const PROFILE_STORAGE_KEY = 'mahidol-forum-profile'
+
+  // 从 sessionStorage 加载 profile
+  const loadProfileFromStorage = useCallback((userId: string): ProfilesRow | null => {
+    if (typeof window === 'undefined') return null
+    try {
+      const stored = sessionStorage.getItem(`${PROFILE_STORAGE_KEY}-${userId}`)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        console.log('[AuthContext] Profile loaded from sessionStorage:', {
+          id: parsed.id,
+          username: parsed.username,
+          avatar_url: parsed.avatar_url,
+        })
+        return parsed
+      }
+    } catch (error) {
+      console.warn('[AuthContext] Failed to load profile from sessionStorage:', error)
+    }
+    return null
+  }, [])
+
+  // 保存 profile 到 sessionStorage
+  const saveProfileToStorage = useCallback((userId: string, profileData: ProfilesRow | null) => {
+    if (typeof window === 'undefined') return
+    try {
+      if (profileData) {
+        sessionStorage.setItem(`${PROFILE_STORAGE_KEY}-${userId}`, JSON.stringify(profileData))
+        console.log('[AuthContext] Profile saved to sessionStorage:', {
+          id: profileData.id,
+          username: profileData.username,
+          avatar_url: profileData.avatar_url,
+        })
+      } else {
+        sessionStorage.removeItem(`${PROFILE_STORAGE_KEY}-${userId}`)
+        console.log('[AuthContext] Profile removed from sessionStorage')
+      }
+    } catch (error) {
+      console.warn('[AuthContext] Failed to save profile to sessionStorage:', error)
+    }
+  }, [])
+
   const loadProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, username, avatar_url, created_at, total_points, level')
       .eq('id', userId)
       .maybeSingle()
 
     if (error) {
-      console.error('Failed to load profile', error)
+      console.error('[AuthContext] Failed to load profile', error)
       return null
     }
+    
+    if (data) {
+      console.log('[AuthContext] Profile loaded from Supabase:', {
+        id: data.id,
+        username: data.username,
+        avatar_url: data.avatar_url,
+        has_avatar_url: !!data.avatar_url,
+      })
+      // 保存到 sessionStorage
+      saveProfileToStorage(userId, data)
+    } else {
+      console.log('[AuthContext] No profile data found for user:', userId)
+    }
+    
     return data
-  }, [])
+  }, [saveProfileToStorage])
 
   useEffect(() => {
     let mounted = true
-    let timeoutId: NodeJS.Timeout | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
     let sessionFromStateChange: Session | null = null
 
     // 标记页面已刷新（用于 sessionStorage 适配器）
@@ -171,18 +228,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (nextUser) {
         try {
           console.log('[AuthContext] Loading profile on auth change for user:', nextUser.id)
+          // 先尝试从 sessionStorage 加载（快速显示）
+          const storedProfile = loadProfileFromStorage(nextUser.id)
+          if (storedProfile && mounted) {
+            setProfile(storedProfile)
+            console.log('[AuthContext] Profile loaded from sessionStorage (temporary)')
+          }
+          // 然后从服务器加载最新数据
           const profileData = await loadProfile(nextUser.id)
           if (mounted) {
             setProfile(profileData)
+            // loadProfile 内部已经保存到 sessionStorage
           }
         } catch (profileError) {
           console.error('[AuthContext] Failed to load profile on auth change', profileError)
           if (mounted) {
             setProfile(null)
+            saveProfileToStorage(nextUser.id, null)
           }
         }
       } else {
+        // 用户登出，清除 profile
         setProfile(null)
+        // 注意：这里不需要清除 sessionStorage，因为用户可能只是切换账户
+        // sessionStorage 会在新用户登录时被覆盖
       }
       
       // Always stop loading when auth state changes (whether session exists or not)
@@ -335,8 +404,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
                   setSession(backgroundResult.data.session)
                   setUser(backgroundResult.data.session.user ?? null)
                   if (backgroundResult.data.session.user) {
-                    loadProfile(backgroundResult.data.session.user.id).then(profileData => {
-                      if (mounted) setProfile(profileData)
+                    const userId = backgroundResult.data.session.user.id
+                    // 先尝试从 sessionStorage 加载
+                    const storedProfile = loadProfileFromStorage(userId)
+                    if (storedProfile && mounted) {
+                      setProfile(storedProfile)
+                      console.log('[AuthContext] Profile loaded from sessionStorage (background check)')
+                    }
+                    // 然后从服务器加载最新数据
+                    loadProfile(userId).then(profileData => {
+                      if (mounted) {
+                        setProfile(profileData)
+                        // loadProfile 内部已经保存到 sessionStorage
+                      }
                     })
                   }
                 } else if (isReload && mounted) {
@@ -351,8 +431,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         setSession(retryResult.data.session)
                         setUser(retryResult.data.session.user ?? null)
                         if (retryResult.data.session.user) {
-                          loadProfile(retryResult.data.session.user.id).then(profileData => {
-                            if (mounted) setProfile(profileData)
+                          const userId = retryResult.data.session.user.id
+                          // 先尝试从 sessionStorage 加载
+                          const storedProfile = loadProfileFromStorage(userId)
+                          if (storedProfile && mounted) {
+                            setProfile(storedProfile)
+                            console.log('[AuthContext] Profile loaded from sessionStorage (retry)')
+                          }
+                          // 然后从服务器加载最新数据
+                          loadProfile(userId).then(profileData => {
+                            if (mounted) {
+                              setProfile(profileData)
+                              // loadProfile 内部已经保存到 sessionStorage
+                            }
                           })
                         }
                       } else if (mounted) {
@@ -515,17 +606,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
           
           if (initialSession.user) {
             try {
-              console.log('[AuthContext] Loading profile for user:', initialSession.user.id)
+              const userId = initialSession.user.id
+              console.log('[AuthContext] Loading profile for user:', userId)
               setLoading(false) // Set loading to false first
-              const profileData = await loadProfile(initialSession.user.id)
+              // 先尝试从 sessionStorage 加载（快速显示）
+              const storedProfile = loadProfileFromStorage(userId)
+              if (storedProfile && mounted) {
+                setProfile(storedProfile)
+                console.log('[AuthContext] Profile loaded from sessionStorage (initial session)')
+              }
+              // 然后从服务器加载最新数据
+              const profileData = await loadProfile(userId)
               if (mounted) {
                 setProfile(profileData)
                 console.log('[AuthContext] Profile loaded:', profileData ? 'success' : 'not found')
+                // loadProfile 内部已经保存到 sessionStorage
               }
             } catch (profileError) {
               console.error('[AuthContext] Failed to load profile', profileError)
               if (mounted) {
                 setProfile(null)
+                if (initialSession.user?.id) {
+                  saveProfileToStorage(initialSession.user.id, null)
+                }
               }
             }
           } else {
@@ -580,69 +683,147 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [loadProfile])
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (forceRefresh: boolean = false) => {
     if (!user?.id) {
       console.log('[AuthContext] No user to refresh profile for')
       return
     }
     try {
-      console.log('[AuthContext] Refreshing profile for user:', user.id)
-      // 使用 Promise.race 添加超时保护（2秒超时，更快响应）
+      console.log('[AuthContext] Refreshing profile for user:', user.id, forceRefresh ? '(FORCE REFRESH - no cache, ignore sessionStorage)' : '')
+      
+      // 如果强制刷新，清除 sessionStorage 中的旧数据，确保从数据库获取最新数据
+      if (forceRefresh) {
+        console.log('[AuthContext] Force refresh: clearing sessionStorage profile to ensure fresh data from database')
+        saveProfileToStorage(user.id, null)
+        // 不先加载 sessionStorage，直接等待数据库响应
+      }
+      
+      // 优先使用后端API获取profile，因为它更可靠
+      try {
+        const { apiFetch } = await import('../lib/api')
+        const session = await supabase.auth.getSession()
+        if (session.data?.session?.access_token) {
+          console.log('[AuthContext] Fetching profile from backend API (no cache)...')
+          // 添加时间戳参数防止浏览器或代理缓存
+          const timestamp = Date.now()
+          const apiProfile = await apiFetch<{
+            id: string
+            username: string | null
+            avatar_url: string | null
+            total_points: number
+            level: number
+            created_at: string
+          }>(`/points/profile?t=${timestamp}`, {
+            accessToken: session.data.session.access_token,
+            // 添加缓存控制头
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            },
+          })
+          
+          if (apiProfile) {
+            // 构建完整的 profile 数据
+            const profileData: ProfilesRow = {
+              id: apiProfile.id,
+              username: apiProfile.username,
+              avatar_url: apiProfile.avatar_url,
+              created_at: apiProfile.created_at,
+            }
+            // 更新profile状态（直接从数据库获取的最新数据）
+            setProfile(profileData)
+            // 同步保存到 sessionStorage（更新缓存）
+            saveProfileToStorage(user.id, profileData)
+            console.log('[AuthContext] ✅ Profile refreshed from API (database) and saved to sessionStorage:', {
+              id: apiProfile.id,
+              username: apiProfile.username,
+              avatar_url: apiProfile.avatar_url,
+              has_avatar_url: !!apiProfile.avatar_url,
+            })
+            return
+          }
+        }
+      } catch (apiErr) {
+        console.warn('[AuthContext] Failed to fetch profile from API, falling back to Supabase:', apiErr)
+      }
+      
+      // Fallback: 使用Supabase直接查询（增加超时时间到5秒）
+      console.log('[AuthContext] Falling back to Supabase query (direct database query)...')
       const timeoutPromise = new Promise<null>((resolve) => {
         setTimeout(() => {
-          console.warn('[AuthContext] Profile refresh timeout after 2 seconds')
+          console.warn('[AuthContext] Supabase profile query timeout after 5 seconds')
           resolve(null)
-        }, 2000)
+        }, 5000)
       })
       
       const profilePromise = loadProfile(user.id)
       const profileData = await Promise.race([profilePromise, timeoutPromise])
       
       if (profileData !== null) {
+        // 从数据库获取的数据，直接更新
         setProfile(profileData)
-        console.log('[AuthContext] Profile refreshed:', profileData ? 'success' : 'not found')
+        // 同步保存到 sessionStorage（更新缓存）
+        saveProfileToStorage(user.id, profileData)
+        console.log('[AuthContext] ✅ Profile refreshed from Supabase (database) and saved to sessionStorage:', profileData ? 'success' : 'not found')
         console.log('[AuthContext] Profile avatar_url:', profileData?.avatar_url || 'none')
+        console.log('[AuthContext] Profile username:', profileData?.username || 'none')
       } else {
-        console.warn('[AuthContext] Profile refresh timed out or returned null')
-        // 即使超时，也尝试从 API 获取最新的 avatar_url
-        try {
-          const { apiFetch } = await import('../lib/api')
-          const session = await supabase.auth.getSession()
-          if (session.data?.session?.access_token) {
-            const apiProfile = await apiFetch<{ avatar_url?: string | null }>('/points/profile', {
-              accessToken: session.data.session.access_token,
-            })
-            if (apiProfile?.avatar_url !== undefined) {
-              setProfile((prev) => prev ? { ...prev, avatar_url: apiProfile.avatar_url } : null)
-              console.log('[AuthContext] Updated avatar_url from API:', apiProfile.avatar_url)
-            }
+        console.warn('[AuthContext] Profile refresh failed from both API and Supabase')
+        // 只有在非强制刷新时才使用 sessionStorage 作为回退
+        // 如果强制刷新但获取失败，不恢复 sessionStorage 的旧数据
+        if (!forceRefresh) {
+          const storedProfile = loadProfileFromStorage(user.id)
+          if (storedProfile) {
+            console.log('[AuthContext] Using profile from sessionStorage as fallback (non-force refresh)')
+            setProfile(storedProfile)
           }
-        } catch (apiErr) {
-          console.warn('[AuthContext] Failed to fetch avatar from API:', apiErr)
+        } else {
+          console.error('[AuthContext] Force refresh failed: unable to get profile from database, not using sessionStorage cache')
         }
       }
     } catch (profileError) {
       console.error('[AuthContext] Failed to refresh profile', profileError)
       // 不抛出错误，避免影响 UI
+      // 但如果强制刷新失败，不应该回退到 sessionStorage
+      if (!forceRefresh) {
+        // 只有在非强制刷新时，才尝试从 sessionStorage 恢复
+        const storedProfile = loadProfileFromStorage(user.id)
+        if (storedProfile) {
+          console.log('[AuthContext] Error occurred, using sessionStorage as fallback (non-force refresh)')
+          setProfile(storedProfile)
+        }
+      }
     }
-  }, [user?.id, loadProfile])
+  }, [user?.id, loadProfile, saveProfileToStorage, loadProfileFromStorage])
 
   // 直接更新 profile 的方法，用于立即更新 UI（如头像更新）
   const updateProfile = useCallback((updates: Partial<ProfilesRow>) => {
     setProfile((prev) => {
       if (!prev) return prev
-      return { ...prev, ...updates }
+      const updated = { ...prev, ...updates }
+      // 同步保存到 sessionStorage
+      if (user?.id) {
+        saveProfileToStorage(user.id, updated)
+      }
+      console.log('[AuthContext] Profile updated directly and saved to sessionStorage:', updates)
+      return updated
     })
-    console.log('[AuthContext] Profile updated directly:', updates)
-  }, [])
+  }, [user?.id, saveProfileToStorage])
+  
 
   const signOut = useCallback(async () => {
     console.log('[AuthContext] signOut called')
     try {
       // 先清除所有状态
+      const currentUserId = user?.id
       setSession(null)
       setUser(null)
       setProfile(null)
+      // 清除 sessionStorage 中的 profile
+      if (currentUserId) {
+        saveProfileToStorage(currentUserId, null)
+      }
       
       // 清除所有存储（包括 localStorage 和 sessionStorage）
       if (typeof window !== 'undefined') {
