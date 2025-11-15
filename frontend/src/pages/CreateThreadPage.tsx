@@ -100,9 +100,10 @@ export function CreateThreadPage() {
         title: string
         category?: string
         summary?: string
-        tags?: string[]
+        tags: string[]
       } = {
         title: title.trim(),
+        tags: validTags,  // tags is required
       }
       
       // Only include optional fields if they have values
@@ -115,14 +116,6 @@ export function CreateThreadPage() {
         const textContent = content.replace(/<[^>]*>/g, '').trim()
         if (textContent) {
           requestBody.summary = textContent.substring(0, 500)
-        }
-      }
-      
-      if (selectedTags && selectedTags.length > 0) {
-        // Filter out empty tags and ensure they're strings
-        const validTags = selectedTags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
-        if (validTags.length > 0) {
-          requestBody.tags = validTags
         }
       }
 
@@ -290,9 +283,7 @@ export function CreateThreadPage() {
                       }`}
                     >
                       {isHot && (
-                        <span className="text-warm" title="Hot tag">
-                          🔥
-                        </span>
+                        <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
                       )}
                       {translateTag(hotTag.tag, i18n.language)} ({hotTag.count})
                     </button>

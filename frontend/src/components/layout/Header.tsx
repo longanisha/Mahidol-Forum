@@ -11,6 +11,7 @@ export function Header() {
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const MENU_ITEMS = [
@@ -24,6 +25,35 @@ export function Header() {
   
   // 获取当前视图（只在首页时使用）
   const currentView = location.pathname === '/' ? (searchParams.get('view') || 'discussions') : null
+  
+  // 当用户登录后，如果profile没有加载，等待AuthContext加载（不主动刷新，避免频繁请求）
+  // AuthContext会在用户登录时自动加载profile，这里只需要等待
+  // 如果profile确实需要刷新，可以在用户操作（如上传头像）后手动调用refreshProfile
+  
+  // 当 profile 或 avatar_url 改变时，重置头像错误状态
+  useEffect(() => {
+    if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
+      console.log('[Header] Avatar URL changed, resetting error state')
+      setAvatarError(false)
+    }
+  }, [profile?.avatar_url])
+  
+  // 调试：打印profile和avatar_url状态
+  useEffect(() => {
+    if (user) {
+      console.log('[Header] ====== Avatar Display Debug ======')
+      console.log('[Header] User logged in:', user.id)
+      console.log('[Header] Profile exists:', !!profile)
+      console.log('[Header] Profile data:', profile)
+      console.log('[Header] Avatar URL:', profile?.avatar_url || 'none')
+      console.log('[Header] Avatar URL type:', typeof profile?.avatar_url)
+      console.log('[Header] Avatar URL length:', profile?.avatar_url?.length || 0)
+      console.log('[Header] Avatar URL trimmed:', profile?.avatar_url?.trim() || 'empty')
+      console.log('[Header] Should show image:', !!(profile?.avatar_url && profile.avatar_url.trim() !== '' && !avatarError))
+      console.log('[Header] Avatar Error:', avatarError)
+      console.log('[Header] ====================================')
+    }
+  }, [user, profile, avatarError])
   
   // 点击外部关闭菜单
   useEffect(() => {
@@ -195,23 +225,26 @@ export function Header() {
                 className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative shrink-0"
                 title={t('common.viewProfile')}
               >
-                {profile?.avatar_url ? (
+                {profile?.avatar_url && profile.avatar_url.trim() !== '' && !avatarError ? (
                   <img
+                    key={profile.avatar_url}
                     src={profile.avatar_url}
                     alt={profile?.username || user.email || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // 如果图片加载失败，显示首字母
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      const parent = target.parentElement
-                      if (parent) {
-                        parent.innerHTML = profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'
-                      }
+                      // 如果图片加载失败，设置错误状态
+                      console.warn('[Header] Avatar image failed to load:', profile.avatar_url, e)
+                      setAvatarError(true)
+                    }}
+                    onLoad={() => {
+                      // 图片加载成功，重置错误状态
+                      setAvatarError(false)
                     }}
                   />
                 ) : (
-                  profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'
+                  <span className="select-none">
+                    {profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'}
+                  </span>
                 )}
               </Link>
               <div className="hidden sm:flex items-center gap-2">

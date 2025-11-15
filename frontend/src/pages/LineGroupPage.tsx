@@ -263,7 +263,7 @@ export function LineGroupPage() {
     setShowReportModal(true)
   }
 
-  const handleSubmitApply = (e: React.FormEvent) => {
+  const handleSubmitApply = (e: FormEvent) => {
     e.preventDefault()
     if (!selectedGroup) return
     applyToGroup({
@@ -272,7 +272,7 @@ export function LineGroupPage() {
     })
   }
 
-  const handleSubmitReport = (e: React.FormEvent) => {
+  const handleSubmitReport = (e: FormEvent) => {
     e.preventDefault()
     if (!selectedGroup || !reportReason.trim()) {
       alert('Please provide a reason for reporting')
@@ -286,7 +286,7 @@ export function LineGroupPage() {
   }
 
 
-  const handleSubmitCreateRequest = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmitCreateRequest = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     e.stopPropagation()
     
@@ -459,12 +459,13 @@ export function LineGroupPage() {
                             const target = e.target as HTMLImageElement
                             target.style.display = 'none'
                             const parent = target.parentElement
-                            if (parent) {
+                            if (parent && qrCodeUrl) {
+                              const encodedUrl = qrCodeUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
                               parent.innerHTML = `
                                 <div class="text-center p-4 border border-red-200 rounded-lg bg-red-50" style="width: 300px; height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                  <p class="text-sm text-red-600 mb-2">图片加载失败</p>
-                                  <a href="${qrCodeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline text-sm">
-                                    点击查看原图
+                                  <p class="text-sm text-red-600 mb-2">Image loading failed</p>
+                                  <a href="${encodedUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline text-sm">
+                                    Click to view original image
                                   </a>
                                 </div>
                               `
@@ -478,12 +479,12 @@ export function LineGroupPage() {
                         >
                           {isApproved ? (
                             <div className="text-center p-4">
-                              <p className="text-sm text-primary/60 mb-2">QR Code 暂不可用</p>
-                              <p className="text-xs text-primary/40">请联系群组管理员</p>
+                              <p className="text-sm text-primary/60 mb-2">QR Code temporarily unavailable</p>
+                              <p className="text-xs text-primary/40">Please contact group administrator</p>
                             </div>
                           ) : (
                             <div className="text-center p-4">
-                              <p className="text-sm text-primary/60 mb-2">申请加入后可见</p>
+                              <p className="text-sm text-primary/60 mb-2">Visible after joining</p>
                               <p className="text-xs text-primary/40">QR Code</p>
                             </div>
                           )}
@@ -491,7 +492,7 @@ export function LineGroupPage() {
                       )}
                     </div>
                     {isApproved && qrCodeUrl && (
-                      <p className="text-xs text-primary/60 text-center mt-2">扫描二维码加入群组</p>
+                      <p className="text-xs text-primary/60 text-center mt-2">Scan QR code to join group</p>
                     )}
                   </div>
 
@@ -521,7 +522,7 @@ export function LineGroupPage() {
                       className="px-4 py-2 rounded-lg text-sm font-semibold text-warm border border-warm hover:bg-warm/10 transition"
                       title="Report this group"
                     >
-                      ⚠️
+                      <i className="fa-solid fa-triangle-exclamation"></i>
                     </button>
                   </div>
                 </div>
@@ -703,7 +704,7 @@ export function LineGroupPage() {
                             if (parent) {
                               parent.innerHTML = `
                                 <div class="text-center p-3 border border-red-200 rounded-lg bg-red-50">
-                                  <p class="text-xs text-red-600">无法加载图片，请检查 URL 是否正确</p>
+                                  <p class="text-xs text-red-600">Cannot load image, please check if URL is correct</p>
                                 </div>
                               `
                             }

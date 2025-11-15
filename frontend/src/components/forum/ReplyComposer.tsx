@@ -90,7 +90,7 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
       <button
         type="submit"
         disabled={isPending}
-        className="px-6 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-6 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:bg-[#1a4380] hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isPending ? t('replyComposer.sending') : t('replyComposer.postReply')}
       </button>

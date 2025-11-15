@@ -130,7 +130,7 @@ export function AnnouncementPage() {
         <article className="bg-white rounded-2xl border border-primary/10 shadow-sm p-8">
           <header className="mb-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent to-warm flex items-center justify-center text-white font-semibold text-lg">
+              <div className="w-12 h-12 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-lg">
                 {authorInitial}
               </div>
               <div>

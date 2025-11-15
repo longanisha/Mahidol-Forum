@@ -137,14 +137,14 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
         {user ? (
           <Link
             to="/create-thread"
-            className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition"
+            className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition"
           >
             {t('home.postTopic')}
           </Link>
         ) : (
           <Link
             to="/login"
-            className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition"
+            className="block w-full text-center px-4 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition"
           >
             {t('home.loginToPost')}
           </Link>

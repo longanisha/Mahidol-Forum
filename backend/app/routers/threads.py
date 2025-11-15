@@ -100,7 +100,7 @@ async def list_posts(
         .select(
           'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
           'tags, view_count, upvote_count, downvote_count, is_closed, is_pinned, pinned_at, '
-          'profiles(id, username)',
+          'profiles(id, username, avatar_url)',
         )
         .order('is_pinned', desc=True)  # 置顶的在前
         .order('created_at', desc=True)  # 先按时间排序获取数据
@@ -114,7 +114,7 @@ async def list_posts(
         .select(
           'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
           'tags, view_count, upvote_count, downvote_count, is_closed, is_pinned, pinned_at, '
-          'profiles(id, username)',
+          'profiles(id, username, avatar_url)',
         )
         .order('is_pinned', desc=True)  # 置顶的在前
       )
@@ -404,7 +404,8 @@ async def create_post(
       
       print(f"[CREATE_POST] ✅ Profile created for user {user.id}")
     
-    # Prepare insert payload, only include tags if provided
+    # Prepare insert payload
+    # tags is now required, so it will always be included
     insert_payload = {
       'title': payload.title,
       'author_id': user.id,
@@ -412,6 +413,7 @@ async def create_post(
       'upvote_count': 0,
       'downvote_count': 0,
       'is_closed': False,
+      'tags': payload.tags,  # tags is required
     }
     
     # Add optional fields
@@ -419,8 +421,6 @@ async def create_post(
       insert_payload['category'] = payload.category
     if payload.summary:
       insert_payload['summary'] = payload.summary
-    if payload.tags and len(payload.tags) > 0:
-      insert_payload['tags'] = payload.tags
 
     # Insert the post
     print(f"[CREATE_POST] Attempting to insert post")
@@ -502,7 +502,7 @@ async def create_post(
       .select(
         'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
         'tags, view_count, upvote_count, downvote_count, is_closed, '
-        'profiles(id, username)',
+        'profiles(id, username, avatar_url)',
       )
       .eq('id', post_id)
       .execute()
@@ -705,7 +705,7 @@ async def create_reply(
     supabase.table('post_replies')
     .select(
       'id, content, post_id, author_id, created_at, parent_reply_id, upvote_count, downvote_count, '
-      'profiles(id, username)',
+      'profiles(id, username, avatar_url)',
     )
     .eq('id', reply_id)
     .execute()
@@ -1098,13 +1098,13 @@ async def get_all_replies_to_my_posts(
       return []
     
     # Get replies to these posts
-    # 步骤2：查询这些帖子下的所有回复（使用 .in_('post_id', my_post_ids) 筛选）
+    # 步骤2：查询这些帖子下的所有Reply（使用 .in_('post_id', my_post_ids) 筛选）
     print(f"[get_all_replies_to_my_posts] Step 2: Querying replies for post_ids: {my_post_ids[:5]}... (showing first 5)")
     response = (
       supabase.table('post_replies')
       .select(
         'id, content, post_id, author_id, created_at, parent_reply_id, upvote_count, downvote_count, '
-        'profiles(id, username), posts!post_id(id, title)',
+        'profiles(id, username, avatar_url), posts!post_id(id, title)',
       )
       .in_('post_id', my_post_ids)  # 筛选条件：post_id IN (my_post_ids)
       .order('created_at', desc=True)
@@ -1246,9 +1246,9 @@ async def get_post(post_id: str, supabase: SupabaseClientDep, user: Optional[Aut
     .select(
       'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
       'is_closed, is_pinned, pinned_at, view_count, upvote_count, downvote_count, tags, '
-      'profiles(id, username), '
+      'profiles(id, username, avatar_url), '
       'post_replies(id, content, post_id, author_id, created_at, upvote_count, downvote_count, parent_reply_id, '
-      'profiles(id, username))',
+      'profiles(id, username, avatar_url))',
     )
     .eq('id', post_id)
     .execute()

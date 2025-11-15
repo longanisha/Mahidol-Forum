@@ -166,8 +166,24 @@ export function ThreadCard({ thread }: ThreadCardProps) {
     <article className="bg-white rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition p-5">
       <header className="flex items-center justify-between mb-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-warm flex items-center justify-center text-white font-semibold text-sm">
-            {authorInitial}
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm overflow-hidden relative shrink-0">
+            {thread.author?.avatar_url ? (
+              <img
+                src={thread.author.avatar_url}
+                alt={thread.author?.username || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = authorInitial
+                  }
+                }}
+              />
+            ) : (
+              authorInitial
+            )}
           </div>
           <div>
             <div className="font-semibold text-sm text-primary">
@@ -272,7 +288,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   className="text-xs text-warm hover:text-warm/80 transition flex-shrink-0"
                   title={t('thread.reportThisThread')}
                 >
-                  ⚠️
+                  <i className="fa-solid fa-triangle-exclamation"></i>
                 </button>
               )}
             </>
@@ -282,7 +298,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         {thread.category !== 'Announcement' && thread.category !== 'LINE Group' && (
           <Link
             to={`/thread/${thread.id}`}
-            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
+            className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
           >
             {t('home.viewPost')}
           </Link>
@@ -309,7 +325,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-primary mb-2">详细描述（可选）</label>
+                <label className="block text-sm font-semibold text-primary mb-2">Description (optional)</label>
                 <textarea
                   value={reportDescription}
                   onChange={(e) => setReportDescription(e.target.value)}
@@ -324,7 +340,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   disabled={isReporting || !reportReason.trim()}
                   className="flex-1 px-4 py-2 rounded-lg font-semibold text-white bg-warm hover:bg-warm/90 transition disabled:opacity-50"
                 >
-                  {isReporting ? '提交中...' : '提交举报'}
+                  {isReporting ? 'Submitting...' : 'Submit Report'}
                 </button>
                 <button
                   type="button"
@@ -335,7 +351,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                   }}
                   className="px-4 py-2 rounded-lg font-semibold text-primary/70 bg-primary/10 hover:bg-primary/20 transition"
                 >
-                  取消
+                  Cancel
                 </button>
               </div>
             </form>

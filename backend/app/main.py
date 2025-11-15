@@ -147,8 +147,8 @@ def create_app() -> FastAPI:
   app.include_router(line.router)
   app.include_router(line_groups.router)
   app.include_router(points.router)
-  app.include_router(admin.router)
   app.include_router(admin_auth.router)
+  app.include_router(admin.router)  # Tags routes are now included in admin router
   app.include_router(superadmin.router)
   app.include_router(announcements.router)
   app.include_router(stats.router)

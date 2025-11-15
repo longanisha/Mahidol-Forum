@@ -686,14 +686,14 @@ export function HomePage() {
                 ) : user ? (
                   <Link
                     to="/create-thread"
-                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition shrink-0 inline-block"
+                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition shrink-0 inline-block"
                   >
                     {t('home.postTopic')}
                   </Link>
                 ) : (
                   <Link
                     to="/login"
-                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition shrink-0 inline-block"
+                    className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition shrink-0 inline-block"
                   >
                     {t('home.loginToPost')}
                   </Link>
@@ -867,12 +867,13 @@ export function HomePage() {
                                     const target = e.target as HTMLImageElement
                                     target.style.display = 'none'
                                     const parent = target.parentElement
-                                    if (parent) {
+                                    if (parent && qrCodeUrl) {
+                                      const encodedUrl = qrCodeUrl.replace(/"/g, '&quot;').replace(/'/g, '&#39;')
                                       parent.innerHTML = `
                                         <div class="text-center p-4 border border-red-200 rounded-lg bg-red-50" style="width: 300px; height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center;">
-                                          <p class="text-sm text-red-600 mb-2">图片加载失败</p>
-                                          <a href="${qrCodeUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline text-sm">
-                                            点击查看原图
+                                          <p class="text-sm text-red-600 mb-2">Image loading failed</p>
+                                          <a href="${encodedUrl}" target="_blank" rel="noopener noreferrer" class="text-accent hover:underline text-sm">
+                                            Click to view original image
                                           </a>
                                         </div>
                                       `
@@ -886,12 +887,12 @@ export function HomePage() {
                                 >
                                   {isApproved ? (
                                     <div className="text-center p-4">
-                                      <p className="text-sm text-primary/60 mb-2">QR Code 暂不可用</p>
-                                      <p className="text-xs text-primary/40">请联系群组管理员</p>
+                                      <p className="text-sm text-primary/60 mb-2">QR Code temporarily unavailable</p>
+                                      <p className="text-xs text-primary/40">Please contact group administrator</p>
                                     </div>
                                   ) : (
                                     <div className="text-center p-4">
-                                      <p className="text-sm text-primary/60 mb-2">申请加入后可见</p>
+                                      <p className="text-sm text-primary/60 mb-2">Visible after joining</p>
                                       <p className="text-xs text-primary/40">QR Code</p>
                                     </div>
                                   )}
@@ -899,7 +900,7 @@ export function HomePage() {
                               )}
                             </div>
                             {isApproved && qrCodeUrl && (
-                              <p className="text-xs text-primary/60 text-center mt-2">扫描二维码加入群组</p>
+                              <p className="text-xs text-primary/60 text-center mt-2">Scan QR code to join group</p>
                             )}
                           </div>
 
@@ -929,7 +930,7 @@ export function HomePage() {
                               className="px-4 py-2 rounded-lg text-sm font-semibold text-warm border border-warm hover:bg-warm/10 transition"
                               title="Report this group"
                             >
-                              ⚠️
+                              <i className="fa-solid fa-triangle-exclamation"></i>
                             </button>
                           </div>
                         </div>
@@ -965,7 +966,7 @@ export function HomePage() {
                                 disabled={currentPage === 1}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                上一页
+                                Previous
                               </button>
                               
                               <div className="flex items-center gap-1">
@@ -1011,11 +1012,11 @@ export function HomePage() {
                                 disabled={currentPage === totalFilteredPages}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                下一页
+                                Next
                               </button>
                               
                               <span className="text-sm text-primary/60 ml-4">
-                                第 {currentPage} / {totalFilteredPages} 页，共 {filteredItems.length} 条
+                                Page {currentPage} / {totalFilteredPages}, Total {filteredItems.length} items
                               </span>
                             </div>
                           )}
@@ -1204,7 +1205,7 @@ export function HomePage() {
                           if (parent) {
                             parent.innerHTML = `
                               <div class="text-center p-3 border border-red-200 rounded-lg bg-red-50">
-                                <p class="text-xs text-red-600">无法加载图片，请检查 URL 是否正确</p>
+                                <p class="text-xs text-red-600">Cannot load image, please check if URL is correct</p>
                               </div>
                             `
                           }

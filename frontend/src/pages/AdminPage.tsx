@@ -176,7 +176,15 @@ async function fetchAnnouncements(): Promise<Announcement[]> {
   })
 }
 
-type MenuType = 'overview' | 'users' | 'groups' | 'applications' | 'reports' | 'creation-requests' | 'points' | 'announcements'
+async function fetchTags(): Promise<Tag[]> {
+  const { adminId, adminEmail } = getAdminCredentials()
+  return apiFetch<Tag[]>('/admin/tags?limit=1000', {
+    adminId,
+    adminEmail,
+  })
+}
+
+type MenuType = 'overview' | 'users' | 'groups' | 'applications' | 'reports' | 'creation-requests' | 'tags' | 'points' | 'announcements'
 
 type Announcement = {
   id: string
@@ -191,6 +199,11 @@ type Announcement = {
     id: string | null
     username: string | null
   } | null
+}
+
+type Tag = {
+  tag: string
+  count: number
 }
 
 export function AdminPage() {
@@ -319,6 +332,13 @@ export function AdminPage() {
     enabled: isAuthorized === true && activeMenu === 'announcements',
   })
 
+  const { data: tags = [], isLoading: tagsLoading, isError: tagsError, error: tagsErrorDetail } = useQuery({
+    queryKey: ['admin', 'tags'],
+    queryFn: () => fetchTags(),
+    enabled: isAuthorized === true && activeMenu === 'tags',
+    retry: 1,
+  })
+
   const { mutate: createGroup, isPending: isCreatingGroup } = useMutation({
     mutationFn: async (data: { name: string; description?: string; qr_code_url: string }) => {
       const { adminId, adminEmail } = getAdminCredentials()
@@ -432,6 +452,18 @@ export function AdminPage() {
   const [newAnnouncementContent, setNewAnnouncementContent] = useState('')
   const [newAnnouncementPriority, setNewAnnouncementPriority] = useState(0)
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
+  
+  // Tags management states
+  const [showRenameTagModal, setShowRenameTagModal] = useState(false)
+  const [showMergeTagModal, setShowMergeTagModal] = useState(false)
+  const [showCreateTagModal, setShowCreateTagModal] = useState(false)
+  const [editingTag, setEditingTag] = useState<Tag | null>(null)
+  const [renameOldTag, setRenameOldTag] = useState('')
+  const [renameNewTag, setRenameNewTag] = useState('')
+  const [mergeSourceTags, setMergeSourceTags] = useState<string[]>([])
+  const [mergeTargetTag, setMergeTargetTag] = useState('')
+  const [newTagName, setNewTagName] = useState('')
+  const [tagSearchQuery, setTagSearchQuery] = useState('')
 
   const { mutate: createAnnouncement, isPending: isCreatingAnnouncement } = useMutation({
     mutationFn: async (data: { title: string; content: string; priority: number; is_active: boolean }) => {
@@ -497,6 +529,114 @@ export function AdminPage() {
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Failed to delete announcement'
+      alert(message)
+    },
+  })
+
+  // Tags mutations
+  const { mutate: renameTag, isPending: isRenamingTag } = useMutation({
+    mutationFn: async (data: { old_tag: string; new_tag: string }) => {
+      const { adminId, adminEmail } = getAdminCredentials()
+      return apiFetch('/admin/tags/rename', {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        adminId,
+        adminEmail,
+      })
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      setShowRenameTagModal(false)
+      setRenameOldTag('')
+      setRenameNewTag('')
+      alert(`Tag renamed successfully! Updated ${data.updated || 0} posts.`)
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Failed to rename tag'
+      alert(message)
+    },
+  })
+
+  const { mutate: deleteTag, isPending: isDeletingTag } = useMutation({
+    mutationFn: async (tagName: string) => {
+      const { adminId, adminEmail } = getAdminCredentials()
+      // URL encode the tag name
+      const encodedTagName = encodeURIComponent(tagName)
+      return apiFetch(`/admin/tags/${encodedTagName}`, {
+        method: 'DELETE',
+        adminId,
+        adminEmail,
+      })
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      alert(`Tag deleted successfully! Updated ${data.updated || 0} posts.`)
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Failed to delete tag'
+      alert(message)
+    },
+  })
+
+  const { mutate: mergeTags, isPending: isMergingTags } = useMutation({
+    mutationFn: async (data: { source_tags: string[]; target_tag: string }) => {
+      const { adminId, adminEmail } = getAdminCredentials()
+      return apiFetch('/admin/tags/merge', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        adminId,
+        adminEmail,
+      })
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
+      queryClient.invalidateQueries({ queryKey: ['posts'] })
+      setShowMergeTagModal(false)
+      setMergeSourceTags([])
+      setMergeTargetTag('')
+      alert(`Tags merged successfully! Updated ${data.updated || 0} posts.`)
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Failed to merge tags'
+      alert(message)
+    },
+  })
+
+  const { mutate: createTag, isPending: isCreatingTag } = useMutation({
+    mutationFn: async (data: { tag: string }) => {
+      const { adminId, adminEmail } = getAdminCredentials()
+      return apiFetch<Tag>('/admin/tags', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        adminId,
+        adminEmail,
+      })
+    },
+    onSuccess: (newTag) => {
+      // Optimistically update the tags list
+      queryClient.setQueryData(['admin', 'tags'], (oldData: Tag[] | undefined) => {
+        if (!oldData) return [newTag]
+        // Check if tag already exists
+        const exists = oldData.some(t => t.tag === newTag.tag)
+        if (exists) {
+          // Update existing tag
+          return oldData.map(t => t.tag === newTag.tag ? newTag : t)
+        }
+        // Add new tag and sort by count descending, then by tag name
+        return [...oldData, newTag].sort((a, b) => {
+          if (b.count !== a.count) return b.count - a.count
+          return a.tag.localeCompare(b.tag)
+        })
+      })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
+      setShowCreateTagModal(false)
+      setNewTagName('')
+      alert(`Tag "${newTag.tag}" created successfully!`)
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Failed to create tag'
       alert(message)
     },
   })
@@ -1003,14 +1143,10 @@ export function AdminPage() {
             {statsLoading ? (
               <div className="text-center py-12 text-primary/60">Loading statistics…</div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-2xl p-6 border border-primary/10 shadow-sm">
                   <div className="text-sm text-primary/60 mb-2">Total Users</div>
                   <div className="text-3xl font-bold text-primary">{stats?.total_users ?? 0}</div>
-                </div>
-                <div className="bg-white rounded-2xl p-6 border border-primary/10 shadow-sm">
-                  <div className="text-sm text-primary/60 mb-2">Total Threads</div>
-                  <div className="text-3xl font-bold text-primary">{stats?.total_threads ?? 0}</div>
                 </div>
                 <div className="bg-white rounded-2xl p-6 border border-primary/10 shadow-sm">
                   <div className="text-sm text-primary/60 mb-2">Total Posts</div>
@@ -2022,6 +2158,435 @@ export function AdminPage() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Tags Management */}
+        {activeMenu === 'tags' && (
+          <div className="bg-white rounded-2xl border border-primary/10 shadow-sm">
+            <div className="p-6 border-b border-primary/10 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-primary">Tags Management</h2>
+                <p className="text-sm text-primary/70 mt-1">
+                  Manage and organize post tags across the forum
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setNewTagName('')
+                  setShowCreateTagModal(true)
+                }}
+                className="px-4 py-2 bg-[#1D4F91] text-white text-sm font-semibold rounded-lg hover:bg-[#1a4380] transition shadow-sm hover:shadow"
+              >
+                + Create Tag
+              </button>
+            </div>
+            <div className="p-6">
+              {/* Search */}
+              <div className="mb-6">
+                <input
+                  type="text"
+                  value={tagSearchQuery}
+                  onChange={(e) => setTagSearchQuery(e.target.value)}
+                  placeholder="Search tags by name..."
+                  className="w-full max-w-md px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
+                />
+                {tags.length > 0 && (
+                  <p className="text-xs text-primary/60 mt-2">
+                    Showing {tags.filter(tag => 
+                      tagSearchQuery === '' || 
+                      tag.tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
+                    ).length} of {tags.length} tags
+                  </p>
+                )}
+              </div>
+              
+              {tagsLoading ? (
+                <div className="p-8 text-center text-primary/60">Loading tags…</div>
+              ) : tagsError ? (
+                <div className="p-8 text-center">
+                  <div className="text-warm font-semibold mb-2">Failed to load tags</div>
+                  <div className="text-sm text-primary/60">
+                    {tagsErrorDetail instanceof Error ? tagsErrorDetail.message : 'Unknown error'}
+                  </div>
+                  <button
+                    onClick={() => {
+                      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
+                    }}
+                    className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : tags.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="text-primary/60 mb-2">No tags found</div>
+                  <div className="text-xs text-primary/50">
+                    Tags will appear here when posts are created with tags.
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Tag Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Usage Count
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {tags
+                        .filter(tag => 
+                          tagSearchQuery === '' || 
+                          tag.tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
+                        )
+                        .map((tag) => (
+                        <tr key={tag.tag} className="hover:bg-gray-50 transition">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <span className="px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200">
+                                {tag.tag}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-gray-900">{tag.count}</span>
+                              <span className="text-xs text-gray-500">
+                                {tag.count === 1 ? 'post' : 'posts'}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  setEditingTag(tag)
+                                  setRenameOldTag(tag.tag)
+                                  setRenameNewTag(tag.tag)
+                                  setShowRenameTagModal(true)
+                                }}
+                                className="px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600 transition shadow-sm hover:shadow"
+                                title="Rename this tag"
+                              >
+                                Rename
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to delete the tag "${tag.tag}"? This will remove it from all ${tag.count} posts.`)) {
+                                    deleteTag(tag.tag)
+                                  }
+                                }}
+                                disabled={isDeletingTag}
+                                className="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
+                                title="Delete this tag"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setMergeSourceTags([tag.tag])
+                                  setMergeTargetTag('')
+                                  setShowMergeTagModal(true)
+                                }}
+                                className="px-3 py-1.5 bg-purple-500 text-white text-xs font-semibold rounded hover:bg-purple-600 transition shadow-sm hover:shadow"
+                                title="Merge this tag with others"
+                              >
+                                Merge
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Rename Tag Modal */}
+        {showRenameTagModal && (
+          <div 
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowRenameTagModal(false)
+                setEditingTag(null)
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-primary">Rename Tag</h3>
+                <button
+                  onClick={() => {
+                    setShowRenameTagModal(false)
+                    setEditingTag(null)
+                    setRenameOldTag('')
+                    setRenameNewTag('')
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (renameOldTag && renameNewTag && renameOldTag !== renameNewTag) {
+                    renameTag({ old_tag: renameOldTag, new_tag: renameNewTag })
+                  }
+                }}
+              >
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-primary mb-2">
+                    Old Tag Name
+                  </label>
+                  <input
+                    type="text"
+                    value={renameOldTag}
+                    onChange={(e) => setRenameOldTag(e.target.value)}
+                    disabled
+                    className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-gray-50 text-gray-600"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-primary mb-2">
+                    New Tag Name
+                  </label>
+                  <input
+                    type="text"
+                    value={renameNewTag}
+                    onChange={(e) => setRenameNewTag(e.target.value)}
+                    required
+                    minLength={1}
+                    className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
+                    placeholder="Enter new tag name"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowRenameTagModal(false)
+                      setEditingTag(null)
+                      setRenameOldTag('')
+                      setRenameNewTag('')
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRenamingTag || !renameNewTag || renameOldTag === renameNewTag}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition disabled:opacity-50"
+                  >
+                    {isRenamingTag ? 'Renaming...' : 'Rename Tag'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Create Tag Modal */}
+        {showCreateTagModal && (
+          <div 
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowCreateTagModal(false)
+                setNewTagName('')
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-primary">Create New Tag</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateTagModal(false)
+                    setNewTagName('')
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (newTagName && newTagName.trim()) {
+                    createTag({ tag: newTagName.trim() })
+                  }
+                }}
+              >
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-primary mb-2">
+                    Tag Name
+                  </label>
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    required
+                    minLength={1}
+                    maxLength={50}
+                    className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
+                    placeholder="Enter tag name (letters, numbers, spaces, hyphens, underscores)"
+                    pattern="[a-zA-Z0-9 _-]+"
+                    title="Tag name can only contain letters, numbers, spaces, hyphens, and underscores"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    Tag name can only contain letters, numbers, spaces, hyphens, and underscores (max 50 characters).
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateTagModal(false)
+                      setNewTagName('')
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingTag || !newTagName.trim()}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#1D4F91] hover:bg-[#1a4380] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isCreatingTag ? 'Creating...' : 'Create Tag'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Merge Tags Modal */}
+        {showMergeTagModal && (
+          <div 
+            className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowMergeTagModal(false)
+                setMergeSourceTags([])
+                setMergeTargetTag('')
+              }
+            }}
+          >
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-primary">Merge Tags</h3>
+                <button
+                  onClick={() => {
+                    setShowMergeTagModal(false)
+                    setMergeSourceTags([])
+                    setMergeTargetTag('')
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  if (mergeSourceTags.length > 0 && mergeTargetTag) {
+                    mergeTags({ source_tags: mergeSourceTags, target_tag: mergeTargetTag })
+                  }
+                }}
+              >
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-primary mb-2">
+                    Source Tags (to merge from)
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {mergeSourceTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="px-2 py-1 rounded text-sm font-semibold text-blue-700 bg-blue-100 flex items-center gap-1"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMergeSourceTags(mergeSourceTags.filter(t => t !== tag))
+                          }}
+                          className="text-blue-700 hover:text-blue-900"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value && !mergeSourceTags.includes(e.target.value)) {
+                        setMergeSourceTags([...mergeSourceTags, e.target.value])
+                      }
+                    }}
+                    className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
+                  >
+                    <option value="">Select a tag to add...</option>
+                    {tags
+                      .filter(tag => !mergeSourceTags.includes(tag.tag))
+                      .map((tag) => (
+                        <option key={tag.tag} value={tag.tag}>
+                          {tag.tag} ({tag.count} posts)
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-semibold text-primary mb-2">
+                    Target Tag (to merge into)
+                  </label>
+                  <input
+                    type="text"
+                    value={mergeTargetTag}
+                    onChange={(e) => setMergeTargetTag(e.target.value)}
+                    required
+                    minLength={1}
+                    className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
+                    placeholder="Enter target tag name"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMergeTagModal(false)
+                      setMergeSourceTags([])
+                      setMergeTargetTag('')
+                    }}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isMergingTags || mergeSourceTags.length === 0 || !mergeTargetTag}
+                    className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-warm to-sun hover:shadow-lg transition disabled:opacity-50"
+                  >
+                    {isMergingTags ? 'Merging...' : 'Merge Tags'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 

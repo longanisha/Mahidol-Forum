@@ -200,7 +200,7 @@ if __name__ == '__main__':
     
     confirm = input("\n是否继续? (y/n): ")
     if confirm.lower() != 'y':
-        print("❌ 已取消")
+        print("❌ 已Cancel")
         sys.exit(0)
     
     success = create_user(email, password)

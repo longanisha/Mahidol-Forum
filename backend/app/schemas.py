@@ -14,7 +14,7 @@ class PostCreate(BaseModel):
   title: str = Field(..., min_length=3, max_length=200)
   category: Optional[str] = Field(default=None, max_length=80)
   summary: Optional[str] = Field(default=None, max_length=500)
-  tags: Optional[List[str]] = Field(default=None, max_length=10)
+  tags: List[str] = Field(..., min_length=1, max_length=10)
   
   @field_validator('title')
   @classmethod
@@ -31,14 +31,16 @@ class PostCreate(BaseModel):
   @classmethod
   def validate_tags(cls, v):
     if v is None:
-      return None
+      raise ValueError('At least one tag is required')
     if isinstance(v, list):
       # Filter out empty tags and trim
       v = [tag.strip() for tag in v if tag and tag.strip()]
+      if len(v) == 0:
+        raise ValueError('At least one tag is required')
       if len(v) > 10:
         raise ValueError('Cannot have more than 10 tags')
-      return v if v else None
-    return v
+      return v
+    raise ValueError('Tags must be a list of strings')
 
 
 class PostResponse(BaseModel):
@@ -106,7 +108,7 @@ class ReportCreate(BaseModel):
 class ReportResponse(BaseModel):
   id: str
   post_id: Optional[str] = None  # 主帖子ID（原 thread_id）
-  reply_id: Optional[str] = None  # 回复ID（原 post_id）
+  reply_id: Optional[str] = None  # ReplyID（原 post_id）
   reporter_id: str
   reason: str
   description: Optional[str] = None

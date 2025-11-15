@@ -18,6 +18,7 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 'applications', label: 'Applications', icon: '📋', section: 'menu' },
   { id: 'reports', label: 'Reports', icon: '📝', section: 'menu' },
   { id: 'creation-requests', label: 'Creation Requests', icon: '➕', section: 'menu' },
+  { id: 'tags', label: 'Tags', icon: '🏷️', section: 'menu' },
   { id: 'points', label: 'Points', icon: '⭐', section: 'others' },
   { id: 'announcements', label: 'Announcements', icon: '📢', section: 'others' },
 ]
@@ -92,27 +93,8 @@ export function AdminLayout({ activeMenu, onMenuChange, children }: AdminLayoutP
           <span className="font-bold text-lg text-gray-800">Mahidol Forum</span>
         </div>
 
-        {/* Center: Search */}
-        <div className="flex-1 max-w-md mx-8">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search"
-              className="w-full px-4 py-2 pl-10 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-            />
-            <svg
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
-
         {/* Right: Notifications & User */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto">
           {/* Notifications */}
           <div className="relative">
             <button className="relative p-2 text-gray-600 hover:text-gray-800">

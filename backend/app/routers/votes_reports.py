@@ -125,7 +125,7 @@ async def vote_post(
       raise HTTPException(status.HTTP_408_REQUEST_TIMEOUT, 'Operation timed out. Please try again.')
     
     # 如果用户点赞了帖子，奖励帖子作者积分 (+2/赞)
-    # 只在真正新增点赞时奖励（不是切换或取消）
+    # 只在真正新增点赞时奖励（不是切换或Cancel）
     if payload.vote_type == 'upvote':
       if not existing_vote.data or len(existing_vote.data) == 0:
         # 新点赞，奖励帖子作者
@@ -288,7 +288,7 @@ async def vote_reply(
       raise HTTPException(status.HTTP_408_REQUEST_TIMEOUT, 'Operation timed out. Please try again.')
     
     # 如果用户点赞了评论，奖励评论作者积分 (+1/赞)
-    # 只在真正新增点赞时奖励（不是切换或取消）
+    # 只在真正新增点赞时奖励（不是切换或Cancel）
     if payload.vote_type == 'upvote':
       if not existing_vote.data or len(existing_vote.data) == 0:
         # 新点赞，奖励评论作者

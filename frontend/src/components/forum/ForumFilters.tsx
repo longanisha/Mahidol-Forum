@@ -79,9 +79,7 @@ export function ForumFilters({
                 }`}
               >
                 {isHot && (
-                  <span className="text-warm" title="Hot tag">
-                    🔥
-                  </span>
+                  <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
                 )}
                 {translateTag(tag, i18n.language)}
               </button>
@@ -96,12 +94,12 @@ export function ForumFilters({
           >
             {isTagsExpanded ? (
               <>
-                <span>收起</span>
+                <span>Collapse</span>
                 <span>▲</span>
               </>
             ) : (
               <>
-                <span>展开更多标签 ({tags.length - TAGS_PER_ROW})</span>
+                <span>More Tags ({tags.length - TAGS_PER_ROW})</span>
                 <span>▼</span>
               </>
             )}
