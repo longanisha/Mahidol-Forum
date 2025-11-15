@@ -1,9 +1,5 @@
-<<<<<<< Updated upstream
-import { useState, useEffect } from 'react'
-=======
 import { useState, useEffect, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
->>>>>>> Stashed changes
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../context/AuthContext'

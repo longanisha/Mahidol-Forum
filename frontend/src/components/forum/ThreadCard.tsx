@@ -293,19 +293,11 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-<<<<<<< Updated upstream
-            <h3 className="text-xl font-bold text-primary mb-4">举报帖子</h3>
-            <form onSubmit={handleSubmitReport} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-primary mb-2">
-                  原因 <span className="text-warm">*</span>
-=======
             <h3 className="text-xl font-bold text-primary mb-4">{t('post.reportComment')}</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
                   {t('post.reason')} <span className="text-warm">*</span>
->>>>>>> Stashed changes
                 </label>
                 <input
                   type="text"

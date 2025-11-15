@@ -171,11 +171,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="text-sm text-accent hover:text-accent/80 font-semibold transition"
                 >
-<<<<<<< Updated upstream
-                  {showReplyForm ? '取消回复' : '回复'}
-=======
                   {showReplyForm ? t('post.cancelReply') : t('post.reply')}
->>>>>>> Stashed changes
                 </button>
               )}
               {/* Report button */}
@@ -185,11 +181,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   className="text-sm text-warm hover:text-warm/80 font-semibold transition"
                   title={t('post.reportThisPost')}
                 >
-<<<<<<< Updated upstream
-                  ⚠️ 举报
-=======
                   <i className="fa-solid fa-triangle-exclamation"></i> {t('post.report')}
->>>>>>> Stashed changes
                 </button>
               )}
             </div>
@@ -216,19 +208,11 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-<<<<<<< Updated upstream
-            <h3 className="text-xl font-bold text-primary mb-4">举报评论</h3>
-            <form onSubmit={handleSubmitReport} className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-primary mb-2">
-                  原因 <span className="text-warm">*</span>
-=======
             <h3 className="text-xl font-bold text-primary mb-4">{t('post.reportComment')}</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
                   {t('post.reason')} <span className="text-warm">*</span>
->>>>>>> Stashed changes
                 </label>
                 <input
                   type="text"

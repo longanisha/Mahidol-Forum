@@ -192,13 +192,8 @@ export function Header() {
             <div className="flex items-center gap-3">
               <Link
                 to="/profile"
-<<<<<<< Updated upstream
-                className="w-10 h-10 rounded-full bg-gradient-to-br from-warm to-sun flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative"
-                title="View profile"
-=======
                 className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative shrink-0"
                 title={t('common.viewProfile')}
->>>>>>> Stashed changes
               >
                 {profile?.avatar_url ? (
                   <img

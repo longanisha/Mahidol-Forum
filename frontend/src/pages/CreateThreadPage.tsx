@@ -90,15 +90,12 @@ export function CreateThreadPage() {
       }
 
       // Ensure all fields are properly formatted
-<<<<<<< Updated upstream
-=======
       // tags is now required, so filter out empty tags and ensure they're strings
       const validTags = selectedTags.filter(tag => tag && tag.trim()).map(tag => tag.trim())
       if (validTags.length === 0) {
         throw new Error(t('createThread.atLeastOneTag'))
       }
       
->>>>>>> Stashed changes
       const requestBody: {
         title: string
         category?: string
@@ -160,14 +157,11 @@ export function CreateThreadPage() {
       setError(t('createThread.content'))
       return
     }
-<<<<<<< Updated upstream
-=======
     // Check if at least one tag is selected
     if (!selectedTags || selectedTags.length === 0) {
       setError(t('createThread.atLeastOneTag'))
       return
     }
->>>>>>> Stashed changes
     mutate()
   }
 
@@ -270,26 +264,15 @@ export function CreateThreadPage() {
 
           <div>
             <label className="block text-sm font-semibold text-primary mb-3">
-<<<<<<< Updated upstream
-              Tags (click to select)
-=======
               {t('createThread.tags')} * <span className="text-primary/60 text-xs font-normal">({t('createThread.atLeastOneTag')})</span>
->>>>>>> Stashed changes
             </label>
             {tagsLoading ? (
               <div className="text-sm text-primary/60">{t('common.loading')}</div>
             ) : tagsError ? (
-<<<<<<< Updated upstream
-              <div className="text-sm text-warm">Failed to load tags. You can still create a thread without tags.</div>
-            ) : sortedHotTags.length === 0 ? (
-              <div className="text-sm text-primary/60 mb-3">
-                No tags available yet. You can create a thread without tags, or tags will be generated from your content.
-=======
               <div className="text-sm text-warm">{t('common.error')}</div>
             ) : sortedHotTags.length === 0 ? (
               <div className="text-sm text-warm mb-3">
                 {t('createThread.hotTags')}
->>>>>>> Stashed changes
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -317,28 +300,6 @@ export function CreateThreadPage() {
                 })}
               </div>
             )}
-<<<<<<< Updated upstream
-            {selectedTags.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <span className="text-xs text-primary/60">Selected:</span>
-                {selectedTags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => handleTagToggle(tag)}
-                      className="hover:text-warm transition"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-=======
             <div className="mt-3 flex flex-wrap gap-2">
               {selectedTags.length > 0 ? (
                 <>
@@ -363,7 +324,6 @@ export function CreateThreadPage() {
                 <span className="text-xs text-warm">{t('createThread.atLeastOneTag')}</span>
               )}
             </div>
->>>>>>> Stashed changes
           </div>
 
           {error && (
