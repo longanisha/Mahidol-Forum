@@ -14,7 +14,6 @@ import { CreateThreadPage } from './pages/CreateThreadPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import './App.css'
-import './index.css'
 
 export default function App() {
   return (

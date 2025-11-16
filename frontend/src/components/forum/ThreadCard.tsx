@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { translateTag } from '../../utils/tagTranslations'
 
 export type ThreadWithAuthor = {
   id: string
@@ -79,6 +81,7 @@ function synthesizeStat(id: string, multiplier: number, base: number) {
 }
 
 export function ThreadCard({ thread }: ThreadCardProps) {
+  const { t, i18n } = useTranslation()
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [showReportModal, setShowReportModal] = useState(false)
@@ -163,8 +166,24 @@ export function ThreadCard({ thread }: ThreadCardProps) {
     <article className="bg-white rounded-2xl border border-primary/10 shadow-sm hover:shadow-md transition p-5">
       <header className="flex items-center justify-between mb-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
-            {authorInitial}
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm overflow-hidden relative shrink-0">
+            {thread.author?.avatar_url ? (
+              <img
+                src={thread.author.avatar_url}
+                alt={thread.author?.username || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = authorInitial
+                  }
+                }}
+              />
+            ) : (
+              authorInitial
+            )}
           </div>
           <div>
             <div className="font-semibold text-sm text-primary">
@@ -176,12 +195,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         <div className="flex items-center gap-2">
           {thread.is_pinned && (
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-accent/20 text-accent flex items-center gap-1">
-              📌 Pinned
+              📌 {t('thread.pinned')}
             </span>
           )}
           {thread.is_closed && (
             <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary/70">
-              Closed
+              {t('thread.closed')}
             </span>
           )}
         </div>
@@ -217,7 +236,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             key={`${thread.id}-${tag}`}
             className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-accent/10 text-accent"
           >
-            {tag}
+            {translateTag(tag, i18n.language)}
           </span>
         ))}
       </div>
@@ -227,12 +246,12 @@ export function ThreadCard({ thread }: ThreadCardProps) {
           <div className="flex items-center gap-1.5 text-primary/60">
             <span aria-hidden="true">👁</span>
             <strong className="text-primary">{views}</strong>
-            <span className="text-xs">views</span>
+            <span className="text-xs">{t('home.views')}</span>
           </div>
           <div className="flex items-center gap-1.5 text-primary/60">
             <span aria-hidden="true">💬</span>
             <strong className="text-primary">{replies}</strong>
-            <span className="text-xs">replies</span>
+            <span className="text-xs">{t('home.replies')}</span>
           </div>
           {/* Vote buttons - only for real threads */}
           {thread.category !== 'Announcement' && thread.category !== 'LINE Group' && (
@@ -245,7 +264,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                     ? 'bg-accent/20 text-accent font-semibold'
                     : 'text-primary/60 hover:text-accent'
                 } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={user ? 'Upvote' : 'Login to upvote'}
+                title={user ? t('thread.upvote') : t('thread.loginToUpvote')}
               >
                 <span>⬆</span>
                 <span>{upvotes}</span>
@@ -258,7 +277,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                     ? 'bg-warm/20 text-warm font-semibold'
                     : 'text-primary/60 hover:text-warm'
                 } ${!user ? 'opacity-50 cursor-not-allowed' : ''}`}
-                title={user ? 'Downvote' : 'Login to downvote'}
+                title={user ? t('thread.downvote') : t('thread.loginToDownvote')}
               >
                 <span>⬇</span>
                 <span>{downvotes}</span>
@@ -267,7 +286,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
                 <button
                   onClick={handleReport}
                   className="text-xs text-warm hover:text-warm/80 transition flex-shrink-0"
-                  title="Report this thread"
+                  title={t('thread.reportThisThread')}
                 >
                   <i className="fa-solid fa-triangle-exclamation"></i>
                 </button>
@@ -281,7 +300,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             to={`/thread/${thread.id}`}
             className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition flex-shrink-0 self-start sm:self-auto"
           >
-            View post
+            {t('home.viewPost')}
           </Link>
         )}
       </footer>
@@ -290,17 +309,17 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-primary mb-4">Report Post</h3>
+            <h3 className="text-xl font-bold text-primary mb-4">{t('post.reportComment')}</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
-                  Reason <span className="text-warm">*</span>
+                  {t('post.reason')} <span className="text-warm">*</span>
                 </label>
                 <input
                   type="text"
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  placeholder="Brief reason for reporting..."
+                  placeholder={t('post.briefReason')}
                   className="w-full px-4 py-2 rounded-lg border border-primary/15 focus:outline-none focus:ring-2 focus:ring-accent/30"
                   required
                 />

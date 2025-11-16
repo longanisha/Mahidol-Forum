@@ -80,7 +80,7 @@ class PostReplyCreate(BaseModel):
 class PostReplyResponse(BaseModel):
   id: str
   content: str
-  post_id: str  
+  post_id: str  # 引用主帖子（原 thread_id）
   author_id: str
   created_at: datetime
   upvote_count: Optional[int] = 0
@@ -107,8 +107,8 @@ class ReportCreate(BaseModel):
 
 class ReportResponse(BaseModel):
   id: str
-  post_id: Optional[str] = None  
-  reply_id: Optional[str] = None  # ReplyID
+  post_id: Optional[str] = None  # 主帖子ID（原 thread_id）
+  reply_id: Optional[str] = None  # ReplyID（原 post_id）
   reporter_id: str
   reason: str
   description: Optional[str] = None
@@ -141,7 +141,7 @@ class PointRecord(BaseModel):
 
 class ProfileUpdate(BaseModel):
   username: Optional[str] = Field(default=None, min_length=1, max_length=50)
-  avatar_url: Optional[str] = Field(default=None, max_length=100000)  
+  avatar_url: Optional[str] = Field(default=None, max_length=100000)  # 支持 base64 编码的图片（最大约 75KB）
 
 
 class UserProfile(BaseModel):
@@ -179,7 +179,7 @@ class SimilarPost(BaseModel):
   reply_count: int
 
 
-# LINE Schema
+# LINE 群组相关 Schema
 class LineGroupCreate(BaseModel):
   name: str = Field(..., min_length=3, max_length=100)
   description: Optional[str] = Field(default=None, max_length=500)
@@ -300,7 +300,7 @@ class LineGroupCreationRequestReview(BaseModel):
     return v
 
 
-# Announcements Schema
+# Announcements 相关 Schema
 class AnnouncementCreate(BaseModel):
   title: str = Field(..., min_length=1, max_length=200)
   content: str = Field(..., min_length=1, max_length=2000)

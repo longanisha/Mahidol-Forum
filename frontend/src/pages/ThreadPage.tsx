@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { apiFetch } from '../lib/api'
 import { PostItem, type PostWithAuthor } from '../components/forum/PostItem'
 import { ReplyComposer } from '../components/forum/ReplyComposer'
@@ -33,6 +34,7 @@ async function fetchThread(id: string): Promise<ThreadResponse | null> {
 }
 
 export function ThreadPage() {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -59,7 +61,7 @@ export function ThreadPage() {
     mutationFn: async () => {
       if (!accessToken) {
         console.error('[ThreadPage] No accessToken available for pin post')
-        throw new Error('Please login to pin post')
+        throw new Error(t('thread.loginToPin'))
       }
       console.log('[ThreadPage] Pinning post:', threadId)
       console.log('[ThreadPage] AccessToken exists:', !!accessToken)
@@ -72,11 +74,11 @@ export function ThreadPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['thread', threadId] })
       queryClient.invalidateQueries({ queryKey: ['posts'] })
-      alert('Post pinned successfully! 50 points deducted.')
+      alert(t('thread.postPinnedSuccess'))
     },
     onError: (error) => {
       console.error('[ThreadPage] Pin post error:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to pin post'
+      const errorMessage = error instanceof Error ? error.message : t('thread.failedToPin')
       alert(errorMessage)
     },
   })
@@ -94,7 +96,7 @@ export function ThreadPage() {
   if (!threadId) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-primary/60">No thread selected.</div>
+        <div className="text-primary/60">{t('thread.noThreadSelected')}</div>
       </div>
     )
   }
@@ -102,7 +104,7 @@ export function ThreadPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-primary/60">Loading discussion…</div>
+        <div className="text-primary/60">{t('thread.loading')}</div>
       </div>
     )
   }
@@ -111,7 +113,7 @@ export function ThreadPage() {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
         <div className="text-warm">
-          Unable to load thread: {error instanceof Error ? error.message : 'Unknown error'}
+          {t('thread.error')}: {error instanceof Error ? error.message : 'Unknown error'}
         </div>
       </div>
     )
@@ -120,7 +122,7 @@ export function ThreadPage() {
   if (!thread) {
     return (
       <div className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-primary/60">Thread not found.</div>
+        <div className="text-primary/60">{t('thread.error')}</div>
       </div>
     )
   }
@@ -142,7 +144,7 @@ export function ThreadPage() {
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
-            Back
+            {t('common.cancel')}
           </button>
         </div>
         <header className="bg-white rounded-2xl p-6 border border-primary/10 shadow-sm mb-6">
@@ -177,14 +179,14 @@ export function ThreadPage() {
               {user && thread.author_id === user.id && !thread.is_pinned && (
                 <button
                   onClick={() => {
-                    if (confirm('Pin this post to the top? This will cost 50 points.')) {
+                    if (confirm(t('thread.pinPost'))) {
                       pinPost()
                     }
                   }}
                   disabled={isPinning}
                   className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-gradient-to-r from-yellow-500 to-orange-500 hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPinning ? 'Pinning...' : '📌 Pin Post (50 pts)'}
+                  {isPinning ? t('thread.loading') : `📌 ${t('thread.pinPost')} (50 pts)`}
                 </button>
               )}
             </div>
@@ -194,15 +196,31 @@ export function ThreadPage() {
             <p className="text-primary/70 mb-4 leading-relaxed">{thread.summary}</p>
           )}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm">
-              {thread.author?.username?.[0]?.toUpperCase() || 'M'}
+            <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm overflow-hidden relative shrink-0">
+              {thread.author?.avatar_url ? (
+                <img
+                  src={thread.author.avatar_url}
+                  alt={thread.author?.username || 'User'}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement
+                    target.style.display = 'none'
+                    const parent = target.parentElement
+                    if (parent) {
+                      parent.innerHTML = thread.author?.username?.[0]?.toUpperCase() || 'M'
+                    }
+                  }}
+                />
+              ) : (
+                thread.author?.username?.[0]?.toUpperCase() || 'M'
+              )}
             </div>
             <div>
               <div className="font-semibold text-primary">
                 {thread.author?.username || 'Mahidol Member'}
               </div>
               <div className="text-sm text-primary/60">
-                Started on{' '}
+                {t('thread.createdAt')}{' '}
                 {new Date(thread.created_at).toLocaleDateString(undefined, {
                   month: 'long',
                   day: 'numeric',
@@ -216,13 +234,13 @@ export function ThreadPage() {
         <section className="space-y-4 mb-6">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-primary">
-              {sortedReplies.length} {sortedReplies.length === 1 ? 'Reply' : 'Replies'}
+              {sortedReplies.length} {sortedReplies.length === 1 ? t('thread.reply') : t('thread.replies')}
           </h2>
         </div>
 
         {sortedReplies.length === 0 ? (
           <div className="bg-white rounded-2xl p-8 text-center text-primary/60 border border-dashed border-primary/20">
-            No replies yet. Start the conversation below.
+            {t('thread.noReplies')}
           </div>
         ) : (
           sortedReplies.map((reply) => <PostItem key={reply.id} post={reply} threadId={threadId} />)

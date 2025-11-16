@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { translateTag } from '../../utils/tagTranslations'
 
 type ForumFiltersProps = {
   searchQuery: string
@@ -19,8 +21,10 @@ export function ForumFilters({
   resultCount,
   hotTags = new Set(),
 }: ForumFiltersProps) {
+  const { i18n } = useTranslation()
   const [isTagsExpanded, setIsTagsExpanded] = useState(false)
   
+  // 估算第一行能显示多少个标签（根据常见屏幕宽度，大约8-10个）
   const TAGS_PER_ROW = 8
   const visibleTags = isTagsExpanded ? tags : tags.slice(0, TAGS_PER_ROW)
   const hasMoreTags = tags.length > TAGS_PER_ROW
@@ -77,7 +81,7 @@ export function ForumFilters({
                 {isHot && (
                   <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
                 )}
-                {tag}
+                {translateTag(tag, i18n.language)}
               </button>
             )
           })}
@@ -109,7 +113,7 @@ export function ForumFilters({
         </span>
         {selectedTag ? (
           <span className="px-3 py-1 rounded-full bg-accent/10 text-accent font-medium">
-            Filtered by {selectedTag}
+            Filtered by {translateTag(selectedTag, i18n.language)}
           </span>
         ) : (
           <span className="px-3 py-1 rounded-full bg-primary/5 text-primary/60 font-medium">

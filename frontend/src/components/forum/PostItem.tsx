@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ReplyComposer } from './ReplyComposer'
 import { apiFetch } from '../../lib/api'
@@ -28,6 +29,7 @@ type PostItemProps = {
 }
 
 export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
+  const { t } = useTranslation()
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [showReplyForm, setShowReplyForm] = useState(false)
@@ -107,8 +109,24 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
     <div className={depth > 0 ? 'ml-8 mt-3' : ''}>
       <article className={`bg-white rounded-2xl p-5 border border-primary/10 shadow-sm ${depth > 0 ? 'border-l-4 border-l-accent/30' : ''}`}>
         <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm shrink-0">
-            {post.author?.username?.[0]?.toUpperCase() || 'M'}
+          <div className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm shrink-0 overflow-hidden relative">
+            {post.author?.avatar_url ? (
+              <img
+                src={post.author.avatar_url}
+                alt={post.author?.username || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement
+                  target.style.display = 'none'
+                  const parent = target.parentElement
+                  if (parent) {
+                    parent.innerHTML = post.author?.username?.[0]?.toUpperCase() || 'M'
+                  }
+                }}
+              />
+            ) : (
+              post.author?.username?.[0]?.toUpperCase() || 'M'
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <header className="flex items-center gap-3 mb-2">
@@ -169,7 +187,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="text-sm text-accent hover:text-accent/80 font-semibold transition"
                 >
-                  {showReplyForm ? 'Cancel reply' : 'Reply'}
+                  {showReplyForm ? t('post.cancelReply') : t('post.reply')}
                 </button>
               )}
               {/* Report button */}
@@ -177,9 +195,9 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                 <button
                   onClick={handleReport}
                   className="text-sm text-warm hover:text-warm/80 font-semibold transition"
-                  title="Report this post"
+                  title={t('post.reportThisPost')}
                 >
-                  <i className="fa-solid fa-triangle-exclamation"></i> Report
+                  <i className="fa-solid fa-triangle-exclamation"></i> {t('post.report')}
                 </button>
               )}
             </div>
@@ -206,17 +224,17 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-xl font-bold text-primary mb-4">Report Comment</h3>
+            <h3 className="text-xl font-bold text-primary mb-4">{t('post.reportComment')}</h3>
             <form onSubmit={handleSubmitReport} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-primary mb-2">
-                  Reason <span className="text-warm">*</span>
+                  {t('post.reason')} <span className="text-warm">*</span>
                 </label>
                 <input
                   type="text"
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  placeholder="Brief reason for reporting..."
+                  placeholder={t('post.briefReason')}
                   className="w-full px-4 py-2 rounded-lg border border-primary/15 focus:outline-none focus:ring-2 focus:ring-accent/30"
                   required
                 />

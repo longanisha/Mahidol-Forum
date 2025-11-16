@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
@@ -11,6 +12,7 @@ type ReplyComposerProps = {
 }
 
 export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyComposerProps) {
+  const { t } = useTranslation()
   const { user, accessToken } = useAuth()
   const [content, setContent] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -19,12 +21,12 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
   const { mutate, isPending } = useMutation({
     mutationFn: async () => {
       if (!user || !accessToken) {
-        throw new Error('Please login to reply.')
+        throw new Error(t('replyComposer.pleaseLoginToReply'))
       }
 
       const trimmed = content.trim()
       if (!trimmed) {
-        throw new Error('Reply cannot be empty.')
+        throw new Error(t('replyComposer.replyCannotBeEmpty'))
       }
 
       const payload: { content: string; parent_reply_id?: string } = { content: trimmed }
@@ -51,7 +53,7 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
       const message =
         mutationError instanceof Error
           ? mutationError.message
-          : 'Failed to post reply.'
+          : t('replyComposer.failedToPostReply')
       setError(message)
     },
   })
@@ -65,9 +67,7 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
     return (
       <div className="bg-white rounded-2xl p-6 border border-primary/10 text-center text-primary/70">
         <p>
-          Please <Link to="/login" className="text-accent hover:underline font-semibold">login</Link> or{' '}
-          <Link to="/register" className="text-accent hover:underline font-semibold">create an account</Link> to join
-          the discussion.
+          {t('replyComposer.pleaseLoginOrCreateAccount')}
         </p>
       </div>
     )
@@ -76,13 +76,13 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
   return (
     <form className="bg-white rounded-2xl p-5 border border-primary/10 shadow-sm space-y-4" onSubmit={handleSubmit}>
       <label htmlFor="reply-message" className="block text-sm font-semibold text-primary">
-        Join the conversation
+        {t('replyComposer.joinConversation')}
       </label>
       <textarea
         id="reply-message"
         value={content}
         onChange={(event) => setContent(event.target.value)}
-        placeholder="Share your thoughts..."
+        placeholder={t('replyComposer.shareThoughts')}
         rows={4}
         className="w-full px-4 py-3 rounded-xl border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition resize-y"
       />
@@ -92,7 +92,7 @@ export function ReplyComposer({ threadId, parentPostId, onSuccess }: ReplyCompos
         disabled={isPending}
         className="px-6 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:bg-[#1a4380] hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {isPending ? 'Sending…' : 'Post Reply'}
+        {isPending ? t('replyComposer.sending') : t('replyComposer.postReply')}
       </button>
     </form>
   )

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../context/AuthContext'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 type LineGroupCreationRequest = {
@@ -132,9 +133,9 @@ async function fetchMyPosts(accessToken: string | null, page: number = 1): Promi
   }
 }
 
-async function fetchUserProfile(accessToken: string | null): Promise<{ total_points: number; level: number; avatar_url?: string | null; username?: string | null }> {
-  if (!accessToken) return { total_points: 0, level: 1, avatar_url: null, username: null }
-  return apiFetch<{ total_points: number; level: number; avatar_url: string | null; username: string | null }>('/points/profile', {
+async function fetchUserProfile(accessToken: string | null): Promise<{ total_points: number; level: number }> {
+  if (!accessToken) return { total_points: 0, level: 1 }
+  return apiFetch<{ total_points: number; level: number }>('/points/profile', {
     accessToken,
   })
 }
@@ -184,22 +185,84 @@ async function fetchRepliesToMyPosts(accessToken: string | null, postId: string)
 }
 
 export function ProfilePage() {
+  const { t } = useTranslation()
   const { user, profile, accessToken, refreshProfile, updateProfile } = useAuth()
   const queryClient = useQueryClient()
+  const location = useLocation()
   
- 
+  // 标记是否正在从数据库刷新 profile（用于区分显示数据库数据还是缓存数据）
+  const [isRefreshingProfile, setIsRefreshingProfile] = useState(false)
+  
+  // 当页面加载时，强制刷新profile以确保显示最新数据（每次进入页面都刷新，不使用缓存）
   useEffect(() => {
-    console.log('[ProfilePage] ====== accessToken status ======')
-    console.log('[ProfilePage] accessToken exists:', !!accessToken)
-    console.log('[ProfilePage] accessToken type:', typeof accessToken)
-    console.log('[ProfilePage] accessToken length:', accessToken?.length || 0)
-    console.log('[ProfilePage] user exists:', !!user)
-    console.log('[ProfilePage] user ID:', user?.id || 'null')
-  }, [accessToken, user])
+    console.log('[ProfilePage] ====== useEffect triggered ======')
+    console.log('[ProfilePage] Pathname:', location.pathname)
+    console.log('[ProfilePage] User:', user ? `exists (${user.id})` : 'null')
+    console.log('[ProfilePage] AccessToken:', accessToken ? 'exists' : 'null')
+    console.log('[ProfilePage] refreshProfile function:', typeof refreshProfile)
+    
+    // 确保在 /profile 路径下
+    if (location.pathname !== '/profile') {
+      console.log('[ProfilePage] Not on /profile path, skipping refresh')
+      return
+    }
+    
+    // 检查用户和访问令牌是否准备好
+    if (!user || !accessToken) {
+      console.log('[ProfilePage] ⏳ Waiting for user and accessToken...', {
+        hasUser: !!user,
+        hasAccessToken: !!accessToken,
+      })
+      return
+    }
+    
+    // 检查 refreshProfile 函数是否存在
+    if (!refreshProfile || typeof refreshProfile !== 'function') {
+      console.error('[ProfilePage] ❌ refreshProfile is not a function!', refreshProfile)
+      return
+    }
+    
+    console.log('[ProfilePage] ====== ProfilePage loaded, forcing refresh from DATABASE ======')
+    console.log('[ProfilePage] Current profile before refresh:', {
+      username: profile?.username,
+      avatar_url: profile?.avatar_url,
+    })
+    console.log('[ProfilePage] User ID:', user.id)
+    console.log('[ProfilePage] AccessToken exists:', !!accessToken)
+    console.log('[ProfilePage] Calling refreshProfile(true) to get fresh data from DATABASE...')
+    
+    // 设置刷新状态，确保显示加载状态而不是旧的缓存数据
+    setIsRefreshingProfile(true)
+    
+    // 立即刷新，强制从服务器获取最新数据，不使用任何缓存
+    const refreshPromise = refreshProfile(true) // 传递true表示强制刷新，清除 sessionStorage 并直接从数据库获取
+    console.log('[ProfilePage] refreshProfile called, promise:', refreshPromise)
+    
+    refreshPromise
+      .then(() => {
+        console.log('[ProfilePage] ✅ Profile refreshed from DATABASE on page load')
+        console.log('[ProfilePage] Profile after refresh:', {
+          username: profile?.username,
+          avatar_url: profile?.avatar_url,
+        })
+        // refreshProfile 会更新 AuthContext 中的 profile 状态（直接从数据库获取）
+        // React 会自动重新渲染组件，displayUsername 会使用最新的 profile.username
+        setIsRefreshingProfile(false)
+      })
+      .catch((err) => {
+        console.error('[ProfilePage] ❌ Failed to refresh profile on page load:', err)
+        console.error('[ProfilePage] Error details:', err)
+        if (err instanceof Error) {
+          console.error('[ProfilePage] Error message:', err.message)
+          console.error('[ProfilePage] Error stack:', err.stack)
+        }
+        setIsRefreshingProfile(false)
+      })
+  }, [location.pathname, user?.id, accessToken, refreshProfile]) // 包含 refreshProfile 在依赖项中
   const [isEditing, setIsEditing] = useState(false)
- 
+  // 编辑模式下的输入值（独立于显示值）
   const [editingUsername, setEditingUsername] = useState('')
- 
+  // 保存后的显示值（只在保存成功后更新）
   const [savedUsername, setSavedUsername] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -211,25 +274,37 @@ export function ProfilePage() {
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({})
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
 
-
+  // 同步 profile 的变化到 savedUsername（仅用于编辑模式）
+  // 注意：displayUsername 现在直接使用 profile.username，所以 savedUsername 主要用于编辑模式
   useEffect(() => {
     if (profile?.username !== undefined && !isEditing) {
-   
+      // 如果不在编辑模式，同步 savedUsername 以便在进入编辑模式时使用
+      if (savedUsername !== profile.username) {
+        console.log('[ProfilePage] Profile username changed, syncing savedUsername:', {
+          old: savedUsername,
+          new: profile.username,
+        })
+        setSavedUsername(profile.username)
+      }
+    } else if (savedUsername === null && profile?.username !== undefined) {
+      // 初始化 savedUsername
+      console.log('[ProfilePage] Initializing savedUsername from profile:', profile.username)
       setSavedUsername(profile.username)
     }
-  }, [profile?.username, isEditing])
+  }, [profile?.username, isEditing, savedUsername])
+
+  // 计算显示的 username：
+  // 1. 非编辑模式：直接使用 profile.username（来自 AuthContext，从数据库获取的最新数据）
+  // 2. 编辑模式：使用 editingUsername（用户正在编辑的值）
+  // 3. 回退：使用 savedUsername 或 profile.username 或 email
+  // 注意：在刷新期间（isRefreshingProfile=true），确保使用从数据库获取的最新 profile.username
+  // 如果 profile 存在且不在刷新状态，说明数据已经从数据库获取并更新
+  const displayUsername = isEditing
+    ? editingUsername  // 编辑模式：使用正在编辑的值
+    : (profile?.username ?? (isRefreshingProfile ? null : savedUsername) ?? user?.email?.split('@')[0] ?? 'Member')  // 非编辑模式：优先使用最新的 profile.username（数据库数据）
   
-
-  useEffect(() => {
-    if (savedUsername === null && profile?.username !== undefined) {
-      setSavedUsername(profile.username)
-    }
-  }, []) 
-
-
-  const displayUsername = savedUsername !== null 
-    ? savedUsername 
-    : (profile?.username || user?.email?.split('@')[0] || 'Member')
+  // 如果正在刷新且 profile 不存在，显示加载状态
+  const isProfileLoading = isRefreshingProfile && !profile
 
   const { mutate: updateUserProfile, isPending } = useMutation({
     mutationFn: async () => {
@@ -242,13 +317,16 @@ export function ProfilePage() {
       if (trimmedUsername && trimmedUsername !== profile?.username) {
         updates.username = trimmedUsername
       }
- 
+      // avatar_url 列不存在，跳过更新
+      // if (avatarUrl.trim() && avatarUrl.trim() !== profile?.avatar_url) {
+      //   updates.avatar_url = avatarUrl.trim()
+      // }
 
       if (Object.keys(updates).length === 0) {
         throw new Error('No changes to save')
       }
 
-     
+      // 使用后端 API 更新 profile
       const updatedProfile = await apiFetch<{
         id: string
         username: string | null
@@ -269,15 +347,31 @@ export function ProfilePage() {
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['points', 'profile'] })
       
-     
+      // 保存成功后，更新显示的 username（只在保存成功后更新）
       const newUsername = updatedProfile.username ?? ''
       console.log('[ProfilePage] Setting saved username to:', newUsername)
       setSavedUsername(newUsername)
       
-    
-      refreshProfile().catch((err) => {
-        console.warn('[ProfilePage] Failed to refresh profile in context:', err)
-      })
+      // 立即更新 AuthContext 中的 profile，确保 Header 和其他组件同步更新
+      if (updatedProfile.username !== undefined || updatedProfile.avatar_url !== undefined) {
+        updateProfile({
+          username: updatedProfile.username,
+          avatar_url: updatedProfile.avatar_url,
+        })
+        console.log('[ProfilePage] Profile context updated immediately:', {
+          username: updatedProfile.username,
+          avatar_url: updatedProfile.avatar_url,
+        })
+      }
+      
+      // 后台刷新完整 profile 数据（确保数据一致性，从数据库获取最新数据）
+      refreshProfile(true) // 强制刷新，确保从数据库获取最新数据
+        .then(() => {
+          console.log('[ProfilePage] Profile context refreshed from database after update')
+        })
+        .catch((err) => {
+          console.warn('[ProfilePage] Failed to refresh profile in context:', err)
+        })
       
       setSuccess('Profile updated successfully!')
       setIsEditing(false)
@@ -293,33 +387,33 @@ export function ProfilePage() {
     queryKey: ['profile', 'creation-requests'],
     queryFn: () => fetchMyCreationRequests(accessToken),
     enabled: !!accessToken && activeTab === 'group-requests',
-    retry: 1, 
-    staleTime: 2 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    retry: 1, // 只重试一次
+    staleTime: 2 * 60 * 1000, // 2分钟缓存
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { data: myManagedGroupsApplications = [], isLoading: applicationsLoading } = useQuery({
     queryKey: ['profile', 'managed-groups-applications'],
     queryFn: () => fetchMyManagedGroupsApplications(accessToken),
     enabled: !!accessToken && activeTab === 'group-requests',
-    retry: 1, 
-    staleTime: 2 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    retry: 1, // 只重试一次
+    staleTime: 2 * 60 * 1000, // 2分钟缓存
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { data: userProfile, isLoading: profileLoading } = useQuery({
     queryKey: ['profile', 'points'],
     queryFn: () => fetchUserProfile(accessToken),
     enabled: !!accessToken,
-    retry: 1, 
-    staleTime: 5 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    retry: 1, // 只重试一次，避免长时间阻塞
+    staleTime: 5 * 60 * 1000, // 5分钟缓存
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
-  
+  // 快速压缩图片（优化速度：更小尺寸，更低质量）
   const compressImage = (file: File, maxWidth: number = 150, maxHeight: number = 150, quality: number = 0.5): Promise<File> => {
     return new Promise((resolve, reject) => {
       console.log('[Avatar] compressImage: Starting compression...')
@@ -329,7 +423,7 @@ export function ProfilePage() {
         console.log('[Avatar] compressImage: File read, loading image...')
         const img = new Image()
         
-      
+        // 设置超时，防止图片加载卡住
         const timeout = setTimeout(() => {
           reject(new Error('Image loading timeout'))
         }, 5000)
@@ -338,11 +432,11 @@ export function ProfilePage() {
           clearTimeout(timeout)
           console.log('[Avatar] compressImage: Image loaded, dimensions:', img.width, 'x', img.height)
           
-          
+          // 快速计算新尺寸
           let width = Math.min(img.width, maxWidth)
           let height = Math.min(img.height, maxHeight)
           
-          
+          // 保持宽高比
           if (img.width > img.height) {
             height = (img.height * maxWidth) / img.width
             width = maxWidth
@@ -353,7 +447,7 @@ export function ProfilePage() {
 
           console.log('[Avatar] compressImage: Resizing to:', width, 'x', height)
 
-        
+          // 创建 Canvas 并绘制
           const canvas = document.createElement('canvas')
           canvas.width = width
           canvas.height = height
@@ -371,7 +465,7 @@ export function ProfilePage() {
           ctx.drawImage(img, 0, 0, width, height)
 
           console.log('[Avatar] compressImage: Converting to blob...')
-         
+          // 转换为 Blob
           canvas.toBlob(
             (blob) => {
               if (!blob) {
@@ -405,7 +499,7 @@ export function ProfilePage() {
     })
   }
 
-
+  // 将图片转换为 base64（备用方案，如果 Storage 不可用）
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -418,6 +512,7 @@ export function ProfilePage() {
     })
   }
 
+  // 快速上传头像到 Supabase Storage（如果失败，使用 base64 备用方案）
   const uploadAvatar = async (file: File): Promise<string> => {
     console.log('[Avatar] uploadAvatar called')
     
@@ -427,17 +522,17 @@ export function ProfilePage() {
     }
 
     console.log('[Avatar] Compressing image...')
- 
+    // 快速压缩图片（50x50, 50% 质量）
     const compressedFile = await compressImage(file, 50, 50, 0.5)
     console.log('[Avatar] Image compressed:', compressedFile.size, 'bytes')
 
- 
+    // 尝试上传到 Supabase Storage
     const fileName = `${user.id}/${Date.now()}.jpg`
     const filePath = fileName
     console.log('[Avatar] Attempting to upload to Storage:', filePath)
 
     try {
-     
+      // 设置 15 秒超时
       const uploadPromise = supabase.storage
         .from('avatars')
         .upload(filePath, compressedFile, {
@@ -457,10 +552,10 @@ export function ProfilePage() {
 
       if (uploadError) {
         console.warn('[Avatar] Storage upload failed, using base64 fallback:', uploadError)
-        throw uploadError 
+        throw uploadError // 触发 fallback
       }
 
-   
+      // 获取公共 URL
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath)
@@ -472,19 +567,19 @@ export function ProfilePage() {
       console.log('[Avatar] Storage upload successful, URL:', urlData.publicUrl)
       return urlData.publicUrl
     } catch (err) {
-     
+      // Storage 上传失败，使用 base64 备用方案
       console.log('[Avatar] Storage upload failed, using base64 fallback')
       console.log('[Avatar] Converting to base64...')
       
       const base64 = await fileToBase64(compressedFile)
       console.log('[Avatar] Base64 conversion complete, length:', base64.length)
       
-     
+      // 返回 base64 数据 URL（可以直接存储到数据库）
       return base64
     }
   }
 
-
+  // 处理头像文件选择
   const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) {
@@ -495,7 +590,7 @@ export function ProfilePage() {
     console.log('[Avatar] ====== Starting upload ======')
     console.log('[Avatar] File:', file.name, file.size, 'bytes')
 
-
+    // 验证文件类型
     if (!file.type.startsWith('image/')) {
       console.error('[Avatar] Invalid file type:', file.type)
       setError('Please select an image file')
@@ -503,7 +598,7 @@ export function ProfilePage() {
       return
     }
 
-
+    // 验证文件大小（最大 10MB，压缩后会减小）
     if (file.size > 10 * 1024 * 1024) {
       console.error('[Avatar] File too large:', file.size)
       setError('Image size must be less than 10MB')
@@ -511,7 +606,7 @@ export function ProfilePage() {
       return
     }
 
-  
+    // 检查 accessToken
     if (!accessToken) {
       console.error('[Avatar] No access token')
       setError('You must be logged in to upload avatar')
@@ -528,14 +623,15 @@ export function ProfilePage() {
       const startTime = Date.now()
       
       console.log('[Avatar] Step 1: Compressing image...')
-
+      // 快速上传头像
       const avatarUrl = await uploadAvatar(file)
       console.log('[Avatar] Step 1 complete. URL:', avatarUrl)
       
       console.log('[Avatar] Step 2: Updating database...')
       console.log('[Avatar] Calling API: PATCH /points/profile')
       console.log('[Avatar] Request body:', { avatar_url: avatarUrl })
-
+      
+      // 更新数据库
       const updatedProfile = await apiFetch<{
         id: string
         username: string | null
@@ -551,21 +647,27 @@ export function ProfilePage() {
 
       console.log('[Avatar] Step 2 complete. Profile updated:', updatedProfile)
 
- 
+      // 立即更新 UI（乐观更新）
       queryClient.setQueryData(['points', 'profile'], (old: any) => {
         if (old) {
-          return { ...old, avatar_url: avatarUrl }
+          return { ...old, avatar_url: avatarUrl, username: updatedProfile.username }
         }
         return old
       })
       
-
-      updateProfile({ avatar_url: avatarUrl })
-      console.log('[Avatar] Profile context updated directly, Header should update immediately')
+      // 立即更新 profile context，确保 Header 同步更新（同时更新avatar_url和username）
+      updateProfile({ 
+        avatar_url: avatarUrl,
+        username: updatedProfile.username, // 同时更新username，确保完整同步
+      })
+      console.log('[Avatar] Profile context updated directly, Header should update immediately:', {
+        avatar_url: avatarUrl,
+        username: updatedProfile.username,
+      })
       
-
+      // 后台刷新完整 profile 数据（确保数据一致性）
       refreshProfile().then(() => {
-        console.log('[Avatar] Profile context refreshed in background')
+        console.log('[Avatar] Profile context refreshed from backend')
       }).catch((err) => {
         console.warn('[Avatar] Failed to refresh profile:', err)
       })
@@ -573,13 +675,13 @@ export function ProfilePage() {
       const elapsed = Date.now() - startTime
       console.log(`[Avatar] ====== Upload completed in ${elapsed}ms ======`)
       
-  
+      // 清理预览 URL
       URL.revokeObjectURL(previewUrl)
       
       setSuccess('Avatar updated successfully!')
       setTimeout(() => setSuccess(null), 2000)
       
-  
+      // 刷新查询缓存
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['points', 'profile'] })
       queryClient.invalidateQueries({ queryKey: ['profile', 'points'] })
@@ -591,7 +693,7 @@ export function ProfilePage() {
       let errorMessage = 'Failed to upload avatar'
       if (err instanceof Error) {
         errorMessage = err.message
-        
+        // 如果错误信息是 [object Object]，尝试获取更详细的信息
         if (errorMessage === '[object Object]') {
           try {
             const errorObj = err as any
@@ -612,7 +714,7 @@ export function ProfilePage() {
       
       console.error('[Avatar] Error message:', errorMessage)
       
-   
+      // 清理预览 URL
       URL.revokeObjectURL(previewUrl)
       
       setError(errorMessage)
@@ -620,7 +722,7 @@ export function ProfilePage() {
     } finally {
       console.log('[Avatar] Cleaning up...')
       setIsUploadingAvatar(false)
-    
+      // 重置文件输入
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
@@ -631,14 +733,14 @@ export function ProfilePage() {
     queryKey: ['profile', 'ranking'],
     queryFn: () => fetchUserRanking(accessToken),
     enabled: !!accessToken,
-    retry: 1, 
-    staleTime: 5 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    retry: 1, // 只重试一次，避免长时间阻塞
+    staleTime: 5 * 60 * 1000, // 5分钟缓存
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { data: myPostsData, isLoading: myPostsLoading, error: myPostsError, refetch: refetchMyPosts } = useQuery({
-    queryKey: ['profile', 'my-posts', myPostsPage, accessToken], 
+    queryKey: ['profile', 'my-posts', myPostsPage, accessToken], // 添加 accessToken 到 queryKey，确保 token 变化时重新查询
     queryFn: () => {
       console.log('[useQuery my-posts] ====== Executing query ======')
       console.log('[useQuery my-posts] accessToken exists:', !!accessToken)
@@ -654,50 +756,50 @@ export function ProfilePage() {
     },
     enabled: !!accessToken && (activeTab === 'my-posts' || activeTab === 'replies'),
     retry: (failureCount, error) => {
-      
+      // 如果是 401 错误且 token 已刷新，重试一次
       if (error instanceof Error && (error as any).isUnauthorized) {
         if ((error as any).tokenRefreshed && failureCount === 0) {
-         
+          // Token 已刷新，重试一次
           console.log('[useQuery my-posts] Token refreshed, retrying...')
           return true
         }
-       
+        // Token 刷新失败或已重试过，不重试
         console.log('[useQuery my-posts] Token refresh failed, not retrying')
         return false
       }
       return failureCount < 1
     },
-    staleTime: 2 * 60 * 1000, 
-    gcTime: 5 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    staleTime: 2 * 60 * 1000, // 2分钟缓存
+    gcTime: 5 * 60 * 1000, // 5分钟垃圾回收
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { data: allReplies = [], isLoading: allRepliesLoading, error: allRepliesError } = useQuery({
-    queryKey: ['profile', 'all-replies', accessToken], 
+    queryKey: ['profile', 'all-replies', accessToken], // 添加 accessToken 到 queryKey，确保 token 变化时重新查询
     queryFn: () => {
       console.log('[useQuery all-replies] Executing query with accessToken:', accessToken ? accessToken.substring(0, 20) + '...' : 'null')
       return fetchAllRepliesToMyPosts(accessToken)
     },
     enabled: !!accessToken && activeTab === 'replies',
     retry: (failureCount, error) => {
-    
+      // 如果是 401 错误且 token 已刷新，重试一次
       if (error instanceof Error && (error as any).isUnauthorized) {
         if ((error as any).tokenRefreshed && failureCount === 0) {
-         
+          // Token 已刷新，重试一次
           console.log('[useQuery all-replies] Token refreshed, retrying...')
           return true
         }
-        
+        // Token 刷新失败或已重试过，不重试
         console.log('[useQuery all-replies] Token refresh failed, not retrying')
         return false
       }
       return failureCount < 1
     },
-    staleTime: 2 * 60 * 1000, 
-    gcTime: 5 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    staleTime: 2 * 60 * 1000, // 2分钟缓存
+    gcTime: 5 * 60 * 1000, // 5分钟垃圾回收
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { data: pointHistory = [], isLoading: pointHistoryLoading, error: pointHistoryError } = useQuery({
@@ -718,10 +820,10 @@ export function ProfilePage() {
       }
       return failureCount < 1
     },
-    staleTime: 2 * 60 * 1000, 
-    gcTime: 5 * 60 * 1000, 
-    refetchOnMount: false, 
-    refetchOnWindowFocus: false, 
+    staleTime: 2 * 60 * 1000, // 2分钟缓存
+    gcTime: 5 * 60 * 1000, // 5分钟垃圾回收
+    refetchOnMount: false, // 不阻塞页面渲染
+    refetchOnWindowFocus: false, // 不阻塞页面渲染
   })
 
   const { mutate: reviewApplication, isPending: isReviewing } = useMutation({
@@ -743,7 +845,8 @@ export function ProfilePage() {
     },
   })
 
-
+  // 立即渲染页面结构，不等待数据加载
+  // 即使没有 user，也先渲染基本结构，避免阻塞
   if (!user) {
     return (
       <div className="min-h-screen bg-muted">
@@ -755,12 +858,12 @@ export function ProfilePage() {
             >
               ← Back to Forum
             </Link>
-            <h1 className="text-3xl font-bold text-primary mt-4">My Profile</h1>
+            <h1 className="text-3xl font-bold text-primary mt-4">{t('profile.title')}</h1>
           </div>
           <div className="bg-white rounded-2xl p-8 border border-primary/10 shadow-sm text-center">
-            <p className="text-primary/70 mb-4">Please login to view your profile.</p>
+            <p className="text-primary/70 mb-4">{t('common.login')}</p>
             <Link to="/login" className="text-accent hover:underline font-semibold">
-              Go to Login
+              {t('common.login')}
             </Link>
           </div>
         </div>
@@ -778,7 +881,7 @@ export function ProfilePage() {
           >
             ← Back to Forum
           </Link>
-          <h1 className="text-3xl font-bold text-primary mt-4">My Profile</h1>
+          <h1 className="text-3xl font-bold text-primary mt-4">{t('profile.title')}</h1>
         </div>
 
         {/* Tabs */}
@@ -795,14 +898,14 @@ export function ProfilePage() {
                 }`}
               >
                 {tab === 'group-requests' 
-                  ? 'Group Requests' 
+                  ? t('profile.groupRequests')
                   : tab === 'my-posts' 
-                    ? 'My Posts' 
+                    ? t('profile.myPosts')
                     : tab === 'replies' 
-                      ? 'Replies' 
+                      ? t('profile.myReplies')
                       : tab === 'points-history'
-                        ? 'Points History'
-                        : tab}
+                        ? t('profile.pointsHistory')
+                        : t('profile.title')}
               </button>
             ))}
           </div>
@@ -822,19 +925,45 @@ export function ProfilePage() {
                 {success}
               </div>
             )}
+            
+            {/* 如果正在从数据库刷新 profile，显示加载提示 */}
+            {isRefreshingProfile && (
+              <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading profile from database...
+                </span>
+              </div>
+            )}
 
             <div className="space-y-6">
               <div className="flex items-center gap-6">
                 <div className="relative">
-                  {userProfile?.avatar_url ? (
+                  {/* 显示头像：优先使用从数据库获取的 profile.avatar_url */}
+                  {profile?.avatar_url && profile.avatar_url.trim() !== '' ? (
                     <img
-                      src={userProfile.avatar_url}
-                      alt={displayUsername}
+                      src={profile.avatar_url}
+                      alt={displayUsername || 'User'}
                       className="w-24 h-24 rounded-full object-cover border-2 border-primary/10"
+                      onError={(e) => {
+                        // 如果图片加载失败，显示首字母
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const parent = target.parentElement
+                        if (parent) {
+                          const fallback = document.createElement('div')
+                          fallback.className = 'w-24 h-24 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-bold text-2xl'
+                          fallback.textContent = (displayUsername || 'M')[0]?.toUpperCase() || 'M'
+                          parent.appendChild(fallback)
+                        }
+                      }}
                     />
                   ) : (
                     <div className="w-24 h-24 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-bold text-2xl">
-                      {displayUsername[0]?.toUpperCase() || 'M'}
+                      {(displayUsername || 'M')[0]?.toUpperCase() || 'M'}
                     </div>
                   )}
                   <button
@@ -866,9 +995,15 @@ export function ProfilePage() {
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-primary">
-                    {displayUsername}
+                    {displayUsername || (isProfileLoading ? 'Loading...' : 'Member')}
                   </h2>
                   <p className="text-primary/60">{user.email}</p>
+                  {/* 调试信息：显示数据来源 */}
+                  {import.meta.env.DEV && (
+                    <p className="text-xs text-primary/40 mt-1">
+                      Profile data: {isRefreshingProfile ? 'Loading from database...' : profile ? 'From database (via AuthContext)' : 'Not loaded'}
+                    </p>
+                  )}
                   
                   {/* Points, Level, Ranking */}
                   <div className="mt-4 flex flex-wrap gap-4">
@@ -906,10 +1041,10 @@ export function ProfilePage() {
                     <label className="block text-sm font-semibold text-primary mb-2">Username</label>
                     <p className="text-primary/70">{displayUsername || 'Not set'}</p>
                   </div>
-         
+                {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
                   <button
                     onClick={() => {
-                    
+                      // 进入编辑模式时，初始化编辑值为当前的显示值
                       setEditingUsername(displayUsername || '')
                       setIsEditing(true)
                     }}
@@ -939,7 +1074,7 @@ export function ProfilePage() {
                       placeholder="Enter your username"
                     />
                   </div>
-          
+                {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
                   <div className="flex gap-3">
                     <button
                       type="submit"
@@ -951,7 +1086,7 @@ export function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => {
-                
+                        // Cancel编辑时，重置编辑值为当前的显示值
                         setEditingUsername(displayUsername || '')
                         setIsEditing(false)
                         setError(null)

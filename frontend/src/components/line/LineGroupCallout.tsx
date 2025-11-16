@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useMutation } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
 
 export function LineGroupCallout() {
+  const { t } = useTranslation()
   const { user, accessToken } = useAuth()
   const [message, setMessage] = useState('')
   const [success, setSuccess] = useState<string | null>(null)
@@ -61,11 +63,11 @@ export function LineGroupCallout() {
             {user ? (
               <form className="space-y-4" onSubmit={handleSubmit}>
                 <label htmlFor="line-message" className="block text-sm font-semibold text-primary">
-                  Introduce yourself
+                  {t('lineGroup.introduceYourself')}
                 </label>
                 <textarea
                   id="line-message"
-                  placeholder="Tell us your faculty, interests, or why you'd like to join..."
+                  placeholder={t('lineGroup.introducePlaceholder')}
                   value={message}
                   onChange={(event) => setMessage(event.target.value)}
                   rows={3}
@@ -82,7 +84,7 @@ export function LineGroupCallout() {
                   disabled={isPending}
                   className="px-6 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-accent to-primary hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isPending ? 'Submitting…' : 'Request Invite'}
+                  {isPending ? t('lineGroup.submitting') : t('lineGroup.requestInvite')}
                 </button>
               </form>
             ) : (

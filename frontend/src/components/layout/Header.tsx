@@ -1,26 +1,59 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { useAuth } from '../../context/AuthContext'
-
-const MENU_ITEMS = [
-  { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
-  { id: 'line-group', label: 'Line Group', description: 'Join LINE groups and communities' },
-  { id: 'announcements', label: 'Announcements', description: 'Moderation and campus updates' },
-]
+import { LanguageSwitcher } from './LanguageSwitcher'
 
 export function Header() {
+  const { t } = useTranslation()
   const { user, profile, signOut } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams] = useSearchParams()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const MENU_ITEMS = [
+    { id: 'discussions', label: t('header.discussions'), description: t('header.discussionsDesc') },
+    { id: 'line-group', label: t('header.lineGroup'), description: t('header.lineGroupDesc') },
+    { id: 'announcements', label: t('header.announcements'), description: t('header.announcementsDesc') },
+  ]
   
   // 在 admin 页面隐藏导航项
   const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin')
   
   // 获取当前视图（只在首页时使用）
   const currentView = location.pathname === '/' ? (searchParams.get('view') || 'discussions') : null
+  
+  // 当用户登录后，如果profile没有加载，等待AuthContext加载（不主动刷新，避免频繁请求）
+  // AuthContext会在用户登录时自动加载profile，这里只需要等待
+  // 如果profile确实需要刷新，可以在用户操作（如上传头像）后手动调用refreshProfile
+  
+  // 当 profile 或 avatar_url 改变时，重置头像错误状态
+  useEffect(() => {
+    if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
+      console.log('[Header] Avatar URL changed, resetting error state')
+      setAvatarError(false)
+    }
+  }, [profile?.avatar_url])
+  
+  // 调试：打印profile和avatar_url状态
+  useEffect(() => {
+    if (user) {
+      console.log('[Header] ====== Avatar Display Debug ======')
+      console.log('[Header] User logged in:', user.id)
+      console.log('[Header] Profile exists:', !!profile)
+      console.log('[Header] Profile data:', profile)
+      console.log('[Header] Avatar URL:', profile?.avatar_url || 'none')
+      console.log('[Header] Avatar URL type:', typeof profile?.avatar_url)
+      console.log('[Header] Avatar URL length:', profile?.avatar_url?.length || 0)
+      console.log('[Header] Avatar URL trimmed:', profile?.avatar_url?.trim() || 'empty')
+      console.log('[Header] Should show image:', !!(profile?.avatar_url && profile.avatar_url.trim() !== '' && !avatarError))
+      console.log('[Header] Avatar Error:', avatarError)
+      console.log('[Header] ====================================')
+    }
+  }, [user, profile, avatarError])
   
   // 点击外部关闭菜单
   useEffect(() => {
@@ -131,12 +164,12 @@ export function Header() {
             <Link to="/" className="flex items-center gap-3 text-primary hover:opacity-80 transition">
               <img 
                 src="/forum_logo.png" 
-                alt="Mahidol Forum" 
+                alt={t('header.mahidolForum')} 
                 className="h-10 w-auto"
               />
               <div>
-                <div className="font-bold text-lg leading-tight">Mahidol Forum</div>
-                <div className="text-xs text-primary/60">Connect · Learn · Inspire</div>
+                <div className="font-bold text-lg leading-tight">{t('header.mahidolForum')}</div>
+                <div className="text-xs text-primary/60">{t('header.tagline')}</div>
               </div>
             </Link>
           </div>
@@ -149,7 +182,7 @@ export function Header() {
             >
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
                 <div className="text-xs font-semibold text-primary/50 uppercase tracking-wider mb-3">
-                  Menu
+                  {t('common.menu')}
                 </div>
                 <ul className="space-y-1">
                   {MENU_ITEMS.map((item) => {
@@ -189,43 +222,36 @@ export function Header() {
             <div className="flex items-center gap-3">
               <Link
                 to="/profile"
-                className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative"
-                title="View profile"
+                className="w-10 h-10 rounded-full bg-[#1D4F91] flex items-center justify-center text-white font-semibold text-sm hover:opacity-80 transition cursor-pointer overflow-hidden relative shrink-0"
+                title={t('common.viewProfile')}
               >
-                {profile?.avatar_url ? (
+                {profile?.avatar_url && profile.avatar_url.trim() !== '' && !avatarError ? (
                   <img
+                    key={profile.avatar_url}
                     src={profile.avatar_url}
                     alt={profile?.username || user.email || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // 如果图片加载失败，显示首字母
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      const parent = target.parentElement
-                      if (parent) {
-                        parent.innerHTML = profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'
-                      }
+                      // 如果图片加载失败，设置错误状态
+                      console.warn('[Header] Avatar image failed to load:', profile.avatar_url, e)
+                      setAvatarError(true)
+                    }}
+                    onLoad={() => {
+                      // 图片加载成功，重置错误状态
+                      setAvatarError(false)
                     }}
                   />
                 ) : (
-                  profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'
+                  <span className="select-none">
+                    {profile?.username?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'M'}
+                  </span>
                 )}
               </Link>
               <div className="hidden sm:flex items-center gap-2">
                 <div className="text-sm font-semibold text-primary">
-                  {profile?.username || user.email?.split('@')[0] || 'Member'}
+                  {profile?.username || user.email?.split('@')[0] || t('common.member')}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Language switcher - placeholder
-                    console.log('Language switcher clicked')
-                  }}
-                  className="p-1.5 rounded hover:bg-primary/10 transition"
-                  title="Change language"
-                >
-                  🌐
-                </button>
+                <LanguageSwitcher />
                 <button
                   type="button"
                   onClick={(e) => {
@@ -236,23 +262,24 @@ export function Header() {
                   }}
                   className="px-3 py-1.5 text-sm font-semibold text-warm bg-warm/10 hover:bg-warm/20 rounded-full transition"
                 >
-                  Sign out
+                  {t('common.signOut')}
                 </button>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
+              <LanguageSwitcher />
               <Link
                 to="/login"
                 className="px-4 py-2 rounded-full font-semibold text-primary bg-primary/10 hover:bg-primary/20 transition"
               >
-                Login
+                {t('common.login')}
               </Link>
               <Link
                 to="/register"
                 className="px-4 py-2 rounded-full font-semibold text-white bg-gradient-to-r from-primary to-accent hover:shadow-lg transition shadow-md"
               >
-                Register
+                {t('common.register')}
               </Link>
             </div>
           )}
