@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ReactNode } from 'react'
+import type { Key, ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
@@ -49,7 +49,7 @@ async function fetchTopUsers(): Promise<TopUser[]> {
       adminId,
       adminEmail,
     })
-    // 按积分降序排序并取前5名
+    
     return users
       .filter(user => user.total_points !== undefined && user.total_points !== null)
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0))
@@ -200,7 +200,7 @@ export function AdminLayout({ activeMenu, onMenuChange, children }: AdminLayoutP
                 <div className="text-center py-4 text-gray-500 text-sm">No data</div>
               ) : (
                 <div className="space-y-2">
-                  {topUsers.map((user, index) => (
+                  {topUsers.map((user: { id: Key | null | undefined; username: any; level: any; total_points: any }, index: number) => (
                     <div
                       key={user.id}
                       className="flex items-center justify-between p-2 rounded-md bg-white/80 hover:bg-white transition"

@@ -40,7 +40,7 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     headers.set('Content-Type', 'application/json')
   }
   
-  // 禁用缓存，确保每次都获取最新数据
+
   headers.set('Cache-Control', 'no-cache, no-store, must-revalidate')
   headers.set('Pragma', 'no-cache')
   headers.set('Expires', '0')
@@ -55,32 +55,31 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
     console.log('[apiFetch] Authorization header set, length:', authHeader.length)
     console.log('[apiFetch] Authorization header preview:', authHeader.substring(0, 60) + '...')
   } else {
-    // 某些端点不需要认证（如 /posts/, /announcements 等），所以没有 token 是正常的
-    // 只在调试模式下输出信息日志
+
     if (import.meta.env.DEV) {
       console.log('[apiFetch] No accessToken provided for request to:', path, '(this may be normal for public endpoints)')
     }
   }
   
-  // 支持 admin 认证（如果没有 accessToken）
+
   if (!options.accessToken && options.adminId && options.adminEmail) {
     headers.set('X-Admin-ID', options.adminId)
     headers.set('X-Admin-Email', options.adminEmail)
   }
 
-  // 如果 options 中已经有 signal，则使用它；否则不设置超时限制
+
   let response: Response
   try {
     console.log('[apiFetch] ====== Sending request ======')
     console.log('[apiFetch] URL:', url)
     console.log('[apiFetch] Method:', options.method || 'GET')
     console.log('[apiFetch] Headers:', Object.fromEntries(headers.entries()))
-    // 禁用fetch缓存，确保每次都从服务器获取最新数据
+
     response = await fetch(url, {
       ...options,
       headers,
-      signal: options.signal, // 只使用用户提供的 signal，不自动创建超时
-      cache: 'no-store', // 禁用fetch缓存
+      signal: options.signal, 
+      cache: 'no-store', 
     })
     console.log('[apiFetch] ====== Response received ======')
     console.log('[apiFetch] Status:', response.status, response.statusText)
@@ -125,21 +124,17 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
   }
 
   if (!response.ok) {
-    // 处理 401 未授权错误（token 过期或无效）
     if (response.status === 401) {
       const message =
         typeof payload === 'object' && payload && 'detail' in payload
           ? String(payload.detail)
           : 'Your session has expired. Please log in again.'
       
-      // 尝试刷新 token（如果可能）
       try {
-        // 动态导入 supabase 以避免循环依赖
         const { supabase } = await import('./supabase')
         const { data: { session }, error: refreshError } = await supabase.auth.refreshSession()
         
         if (refreshError || !session) {
-          // 刷新失败，token 已完全过期
           console.warn('[apiFetch] Token refresh failed:', refreshError?.message || 'No session')
           const error = new Error(message)
           ;(error as any).status = 401
@@ -147,7 +142,6 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
           ;(error as any).tokenRefreshFailed = true
           throw error
         } else {
-          // 刷新成功，但当前请求已经失败，需要调用方重试
           console.log('[apiFetch] Token refreshed successfully, but current request failed')
           const error = new Error(message)
           ;(error as any).status = 401
@@ -156,7 +150,6 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
           throw error
         }
       } catch (refreshErr) {
-        // 刷新 token 时出错，token 已完全过期
         console.warn('[apiFetch] Token refresh error:', refreshErr)
         const error = new Error(message)
         ;(error as any).status = 401
@@ -166,7 +159,6 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
       }
     }
     
-    // 处理 403 禁止访问错误（权限不足）
     if (response.status === 403) {
       const message =
         typeof payload === 'object' && payload && 'detail' in payload
@@ -175,12 +167,10 @@ export async function apiFetch<T>(path: string, options: FetchOptions = {}): Pro
       throw new Error(message)
     }
     
-    // 处理 422 验证错误
     if (response.status === 422) {
       let message = 'Validation failed'
       if (typeof payload === 'object' && payload) {
         if ('detail' in payload) {
-          // FastAPI 422 错误通常是数组格式
           if (Array.isArray(payload.detail)) {
             const errors = payload.detail.map((err: any) => {
               if (typeof err === 'object' && err.loc && err.msg) {

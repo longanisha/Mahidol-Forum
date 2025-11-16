@@ -108,7 +108,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] })
     },
-    onError: (error) => {
+    onError: (error: { message: any }) => {
       alert(error instanceof Error ? error.message : 'Failed to vote')
     },
   })
@@ -132,7 +132,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
       setReportDescription('')
       alert('Report submitted! Admin will review it.')
     },
-    onError: (error) => {
+    onError: (error: { message: any }) => {
       alert(error instanceof Error ? error.message : 'Failed to submit report')
     },
   })
@@ -206,7 +206,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
         </div>
       </header>
 
-      {/* Threads 和 Announcements 可以点击查看详情，LINE Groups 不可点击 */}
+      {/* Threads Announcement & Line Groups */}
       {thread.category === 'LINE Group' ? (
         <div className="mb-3">
           <h3 className="text-lg font-bold text-primary mb-2">
@@ -294,7 +294,7 @@ export function ThreadCard({ thread }: ThreadCardProps) {
             </>
           )}
         </div>
-        {/* 只对真正的 threads 显示 "View post" 按钮，Announcements 和 LINE Groups 不显示 */}
+        {/* For the ones that not Announcement & Line Group */}
         {thread.category !== 'Announcement' && thread.category !== 'LINE Group' && (
           <Link
             to={`/thread/${thread.id}`}

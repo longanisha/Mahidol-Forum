@@ -53,10 +53,9 @@ async function fetchThreads(
   pageSize: number = 10,
   accessToken?: string | null,
   sortBy: string = 'latest',
-  getAll: boolean = false, // 是否获取所有数据（用于搜索/tag过滤）
+  getAll: boolean = false, 
 ): Promise<PaginatedThreadsResponse> {
-  // 如果需要获取所有数据（搜索/tag过滤），使用较大的page_size
-  // 使用10000以确保获取足够多的数据（实际数据量通常不会超过这个数）
+
   const actualPageSize = getAll ? 10000 : pageSize
   const actualPage = getAll ? 1 : page
   const data = await apiFetch<PaginatedThreadsResponse>(
@@ -104,19 +103,14 @@ export function HomePage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const viewMode = searchParams.get('view') || 'discussions' // 'discussions', 'announcements', or 'line-groups'
   
-  // 从 URL 参数读取搜索和 tag 状态，确保不同页面的状态独立
-  // 使用 viewMode 作为前缀来区分不同页面的状态
   const searchQuery = searchParams.get(`${viewMode}_search`) || ''
   const selectedTag = searchParams.get(`${viewMode}_tag`) || null
   
-  // 分页状态（仅用于 discussions）
   const currentPage = parseInt(searchParams.get('page') || '1', 10)
   const pageSize = 10
   
-  // 排序状态（discussions 和 announcements 都有排序）
   const sortBy = searchParams.get(`${viewMode}_sort`) || 'latest' // 'latest', 'views', 'replies'
   
-  // 更新搜索和 tag 的辅助函数
   const setSearchQuery = (query: string) => {
     setSearchParams((prev) => {
       if (query) {
@@ -124,7 +118,7 @@ export function HomePage() {
       } else {
         prev.delete(`${viewMode}_search`)
       }
-      prev.set('page', '1') // 重置到第一页
+      prev.set('page', '1') 
       return prev
     })
   }
@@ -136,7 +130,7 @@ export function HomePage() {
       } else {
         prev.delete(`${viewMode}_tag`)
       }
-      prev.set('page', '1') // 重置到第一页
+      prev.set('page', '1') 
       return prev
     })
   }
@@ -152,11 +146,8 @@ export function HomePage() {
   const [createRequestName, setCreateRequestName] = useState('')
   const [createRequestDescription, setCreateRequestDescription] = useState('')
   const [createRequestQrCodeUrl, setCreateRequestQrCodeUrl] = useState('')
-  // 为了确保排序和过滤的一致性，始终获取所有数据（最多1000条）
-  // 当有搜索或tag过滤时，使用固定的排序方式（latest）获取数据，然后在前端排序
-  // 这样可以确保获取到相同的数据集，不会因为排序方式不同而获取到不同的数据
   const hasSearchOrTag = !!(searchQuery || selectedTag)
-  const fetchSortBy = hasSearchOrTag ? 'latest' : sortBy // 有搜索/tag时，用latest获取数据，前端再排序
+  const fetchSortBy = hasSearchOrTag ? 'latest' : sortBy 
   
   const {
     data: threadsData,
@@ -167,7 +158,7 @@ export function HomePage() {
     queryKey: ['posts', 'all', fetchSortBy, accessToken, searchQuery, selectedTag],
     queryFn: () => fetchThreads(1, 1000, accessToken, fetchSortBy, true),
     enabled: viewMode === 'discussions' || viewMode === 'all',
-    staleTime: 2 * 60 * 1000, // 2 minutes - threads 更新较频繁，缓存时间稍短
+    staleTime: 2 * 60 * 1000, // 2 minutes - threads 
   })
   
   const threads = threadsData?.items || []
@@ -183,7 +174,7 @@ export function HomePage() {
     queryKey: ['announcements'],
     queryFn: fetchAnnouncements,
     enabled: viewMode === 'announcements' || viewMode === 'all',
-    staleTime: 5 * 60 * 1000, // 5 minutes - announcements 更新较少
+    staleTime: 5 * 60 * 1000, // 5 minutes - announcements
   })
 
   const {
@@ -202,7 +193,7 @@ export function HomePage() {
     queryKey: ['line-group-applications'],
     queryFn: () => fetchMyApplications(accessToken),
     enabled: (viewMode === 'line-groups' || viewMode === 'all') && !!user,
-    staleTime: 1 * 60 * 1000, // 1 minute - 用户相关数据更新较频繁
+    staleTime: 1 * 60 * 1000, // 1 minute - 
   })
 
   const { data: myCreationRequests = [] } = useQuery({
@@ -214,7 +205,6 @@ export function HomePage() {
 
   const safeThreads = threads ?? []
   
-  // 将 announcements 转换为类似 thread 的格式以便显示（必须在其他使用它的 useMemo 之前定义）
   const announcementThreads = useMemo(() => {
     return (announcements || []).map((announcement): ThreadWithAuthor => ({
       id: announcement.id,
@@ -260,56 +250,48 @@ export function HomePage() {
     ? lineGroupsErrorDetail
     : threadsErrorDetail || announcementsErrorDetail || lineGroupsErrorDetail
 
-  // 计算标签及其引用次数（包含 discussions 和 announcements）
   const tagsWithCount = useMemo(() => {
     const tagCountMap = new Map<string, number>()
     
-    // 初始化基础标签
     const baseTags = ['AI', 'ICT', 'Courses', 'Sports', 'Events', 'Digital Nomad', 'Thai']
     baseTags.forEach(tag => {
       tagCountMap.set(tag, 0)
     })
     
-    // 统计 discussions 的标签
     safeThreads.forEach((thread) => {
-      // 统计 category
+      //category
       if (thread.category) {
         const count = tagCountMap.get(thread.category) || 0
         tagCountMap.set(thread.category, count + 1)
       }
-      // 统计 tags 数组中的标签
+      // tags 
       thread.tags?.forEach((tag) => {
         const count = tagCountMap.get(tag) || 0
         tagCountMap.set(tag, count + 1)
       })
     })
     
-    // 统计 announcements 的标签
+
     announcementThreads.forEach((announcement) => {
-      // 统计 category
       if (announcement.category) {
         const count = tagCountMap.get(announcement.category) || 0
         tagCountMap.set(announcement.category, count + 1)
       }
-      // 统计 tags 数组中的标签
       announcement.tags?.forEach((tag) => {
         const count = tagCountMap.get(tag) || 0
         tagCountMap.set(tag, count + 1)
       })
     })
     
-    // 转换为数组并按引用次数排序
     return Array.from(tagCountMap.entries())
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count)
   }, [safeThreads, announcementThreads])
 
-  // 获取所有标签（按引用次数排序）
   const tags = useMemo(() => {
     return tagsWithCount.map(item => item.tag)
   }, [tagsWithCount])
 
-  // 获取前5个最热门的标签
   const top5HotTags = useMemo(() => {
     return new Set(tagsWithCount.slice(0, 5).map(item => item.tag))
   }, [tagsWithCount])
@@ -467,7 +449,7 @@ export function HomePage() {
     })
   }
 
-  // 将 LINE groups 转换为类似 thread 的格式以便显示（用于 'all' 视图）
+
   const lineGroupThreads = useMemo(() => {
     return lineGroups.map((group): ThreadWithAuthor => ({
       id: group.id,
@@ -491,29 +473,26 @@ export function HomePage() {
     }))
   }, [lineGroups])
 
-  // 根据 viewMode 决定显示的内容
-  // 注意：discussions 现在使用后端分页，不需要前端过滤
+
   const allItems = useMemo(() => {
     if (viewMode === 'discussions') {
-      // discussions 使用后端分页，直接返回当前页的数据
+
       return safeThreads
     } else if (viewMode === 'announcements') {
       return announcementThreads
     } else if (viewMode === 'line-groups') {
       return lineGroupThreads
     } else {
-      // 'all' - 合并显示，announcements 在前，然后是 line groups，最后是 threads
+
       return [...announcementThreads, ...lineGroupThreads, ...safeThreads]
     }
   }, [viewMode, safeThreads, announcementThreads, lineGroupThreads])
 
-  // 对于 discussions，统一在前端进行过滤、排序和分页
-  // 对于其他视图，仍然需要前端过滤
+
   const filteredItems = useMemo(() => {
     let filtered: ThreadWithAuthor[] = []
     
     if (viewMode === 'discussions') {
-      // 先进行搜索和tag过滤
       filtered = safeThreads.filter((item) => {
         const matchesSearch =
           !searchQuery ||
@@ -530,30 +509,23 @@ export function HomePage() {
         return matchesSearch && matchesTag
       })
       
-      // 对所有过滤后的结果进行排序
       filtered = [...filtered].sort((a, b) => {
-        // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
         
-        // 根据排序方式排序
         if (sortBy === 'views') {
-          // 按浏览数降序，如果相同则按时间新到旧
           const viewsDiff = (b.view_count ?? 0) - (a.view_count ?? 0)
           if (viewsDiff !== 0) return viewsDiff
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         } else if (sortBy === 'replies') {
-          // 按评论数降序，如果相同则按时间新到旧
           const repliesDiff = (b.reply_count ?? 0) - (a.reply_count ?? 0)
           if (repliesDiff !== 0) return repliesDiff
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         } else {
-          // latest - 按创建时间降序（从新到旧）
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }
       })
     } else if (viewMode === 'announcements') {
-      // Announcements 视图：应用搜索和 tag 过滤，然后排序
       filtered = announcementThreads.filter((item) => {
         const matchesSearch =
           !searchQuery ||
@@ -570,30 +542,24 @@ export function HomePage() {
         return matchesSearch && matchesTag
       })
       
-      // 对 Announcements 进行排序
+
       filtered = [...filtered].sort((a, b) => {
-        // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
         
-        // 根据排序方式排序
         if (sortBy === 'views') {
-          // 按浏览数降序，如果相同则按时间新到旧
           const viewsDiff = (b.view_count ?? 0) - (a.view_count ?? 0)
           if (viewsDiff !== 0) return viewsDiff
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         } else if (sortBy === 'replies') {
-          // 按评论数降序，如果相同则按时间新到旧
           const repliesDiff = (b.reply_count ?? 0) - (a.reply_count ?? 0)
           if (repliesDiff !== 0) return repliesDiff
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         } else {
-          // latest - 按创建时间降序（从新到旧）
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }
       })
     } else {
-      // 其他视图（如 line-groups）保持原有逻辑
       filtered = allItems.filter((item) => {
         const matchesSearch =
           !searchQuery ||
@@ -610,19 +576,15 @@ export function HomePage() {
         return matchesSearch && matchesTag
       })
       
-      // 其他视图也需要排序
       filtered = [...filtered].sort((a, b) => {
-        // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
         
-        // 根据排序方式排序
         if (sortBy === 'views') {
           return (b.view_count ?? 0) - (a.view_count ?? 0)
         } else if (sortBy === 'replies') {
           return (b.reply_count ?? 0) - (a.reply_count ?? 0)
         } else {
-          // latest - 按创建时间降序
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         }
       })
@@ -712,7 +674,7 @@ export function HomePage() {
                     hotTags={top5HotTags}
                   />
                   
-                  {/* Sort Options - 适用于 discussions 和 announcements */}
+                  {/* Sort Options - */}
                   {(viewMode === 'discussions' || viewMode === 'announcements') && (
                     <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm mb-4">
                       <div className="flex items-center gap-2">
@@ -789,7 +751,6 @@ export function HomePage() {
               {!isLoading && !isError && filteredItems.length === 0 && (
                 <div className="bg-white rounded-2xl p-8 text-center text-primary/60 border border-dashed border-primary/20">
                   {viewMode === 'discussions' && !searchQuery && !selectedTag ? (
-                    // 没有搜索和标签过滤，但数据为空（可能是后端没有数据）
                     'No threads yet. Be the first to start a discussion!'
                   ) : (
                     <>
@@ -804,7 +765,7 @@ export function HomePage() {
               )}
 
               {!isLoading && !isError && viewMode === 'line-groups' ? (
-                // LINE Groups 视图：显示卡片布局
+                // LINE Groups 
                 lineGroups.length === 0 ? (
                   <div className="bg-white rounded-2xl p-8 text-center border border-primary/10">
                     <p className="text-primary/70">{t('home.noLineGroupsYet')}</p>
@@ -939,10 +900,8 @@ export function HomePage() {
                   </div>
                 )
               ) : (
-                // 其他视图：显示 ThreadCard
                 <>
                   {!isLoading && !isError && (() => {
-                    // 对于 discussions，需要前端分页
                     if (viewMode === 'discussions') {
                       const start = (currentPage - 1) * pageSize
                       const end = start + pageSize
@@ -953,7 +912,6 @@ export function HomePage() {
                         <>
                           {paginatedItems.map((item) => <ThreadCard key={item.id} thread={item} />)}
                           
-                          {/* 分页控件 */}
                           {totalFilteredPages > 1 && (
                             <div className="flex items-center justify-center gap-2 mt-6">
                               <button
@@ -1023,7 +981,6 @@ export function HomePage() {
                         </>
                       )
                     } else {
-                      // 其他视图直接显示所有过滤后的结果
                       return filteredItems.map((item) => <ThreadCard key={item.id} thread={item} />)
                     }
                   })()}

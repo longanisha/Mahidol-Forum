@@ -75,28 +75,28 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     { id: 'announcements', label: t('header.announcements'), description: t('header.announcementsDesc') },
   ]
   
-  // 页面加载时始终获取最新的 announcements（因为侧边栏在所有视图下都显示）
+  // Announcements
   const { data: announcements = [] } = useQuery({
     queryKey: ['announcements'],
     queryFn: fetchAnnouncements,
-    enabled: true, // 始终启用，在页面加载时获取
+    enabled: true, 
     staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchOnMount: true, // 组件挂载时重新获取，确保获取最新数据
+    refetchOnMount: true, 
   })
 
-  // 在所有视图下都请求统计数据
+
   const { data: stats } = useQuery({
     queryKey: ['community-stats'],
     queryFn: fetchCommunityStats,
-    enabled: true, // 始终启用，在所有视图下都显示统计数据
+    enabled: true, 
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
-  // 获取前5名用户
+  
   const { data: topUsers = [], isLoading: topUsersLoading } = useQuery({
     queryKey: ['top-users'],
     queryFn: fetchTopUsers,
-    enabled: true, // 始终启用
+    enabled: true, 
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 
@@ -109,7 +109,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     if (onSelectMenu) {
       onSelectMenu(itemId)
     } else {
-      // 默认导航行为
+      
       if (itemId === 'line-group') {
         navigate('/?view=line-groups')
       } else if (itemId === 'discussions') {
@@ -120,7 +120,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     }
   }
 
-  // 判断菜单项是否激活
+  
   const isActive = (itemId: string) => {
     if (itemId === 'line-group') {
       return currentView === 'line-groups'

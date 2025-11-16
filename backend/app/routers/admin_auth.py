@@ -24,7 +24,7 @@ class AdminLoginResponse(BaseModel):
 def verify_password(plain_password: str, hashed_password: str) -> bool:
   """验证密码"""
   try:
-    # 确保密码不超过 72 字节
+
     password_bytes = plain_password.encode('utf-8')
     if len(password_bytes) > 72:
       password_bytes = password_bytes[:72]
@@ -36,7 +36,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def get_password_hash(password: str) -> str:
   """生成密码哈希"""
-  # bcrypt 限制密码长度为 72 字节
+
   password_bytes = password.encode('utf-8')
   if len(password_bytes) > 72:
     password_bytes = password_bytes[:72]
@@ -54,7 +54,7 @@ async def admin_login(
   try:
     print(f"[admin_login] Attempting login for email: {credentials.email}")
     
-    # 查询 admin（不使用 .single()，因为可能没有记录）
+
     response = (
       supabase.table('admins')
       .select('id, email, password_hash, username, is_active')
@@ -73,7 +73,7 @@ async def admin_login(
         detail=f'查询失败: {error_msg}'
       )
     
-    # 检查是否有数据
+
     if not response.data or len(response.data) == 0:
       print(f"[admin_login] No admin found with email: {credentials.email} or admin is inactive")
       raise HTTPException(
@@ -81,11 +81,11 @@ async def admin_login(
         detail='账号或密码错误'
       )
     
-    # 获取第一条记录（应该只有一条，因为 email 是唯一的）
+
     admin = response.data[0]
     print(f"[admin_login] Admin found: {admin['id']}, username: {admin.get('username')}")
     
-    # 验证密码
+
     password_valid = verify_password(credentials.password, admin['password_hash'])
     print(f"[admin_login] Password verification result: {password_valid}")
     
@@ -96,14 +96,14 @@ async def admin_login(
         detail='账号或密码错误'
       )
     
-    # 更新最后登录时间
+
     try:
       supabase.table('admins').update({
         'last_login_at': datetime.utcnow().isoformat()
       }).eq('id', admin['id']).execute()
     except Exception as e:
       print(f"Failed to update last_login_at: {e}")
-      # 不阻止登录，只是记录错误
+
     
     return AdminLoginResponse(
       success=True,
@@ -138,7 +138,7 @@ async def admin_register(
 ):
   """注册新的 admin（仅用于初始化，生产环境应该禁用）"""
   try:
-    # 检查是否已存在
+
     check_response = (
       supabase.table('admins')
       .select('id')
@@ -152,7 +152,7 @@ async def admin_register(
         detail='该邮箱已被注册'
       )
     
-    # 创建新 admin
+
     password_hash = get_password_hash(data.password)
     
     insert_data = {
@@ -178,7 +178,6 @@ async def admin_register(
       )
     
     if not insert_response.data or len(insert_response.data) == 0:
-      # 如果插入成功但没有返回数据，重新查询
       check_response = (
         supabase.table('admins')
         .select('id, email, username')

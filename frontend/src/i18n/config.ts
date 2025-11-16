@@ -7,8 +7,8 @@ import zhTranslations from './locales/zh.json'
 import thTranslations from './locales/th.json'
 
 i18n
-  .use(LanguageDetector) // 检测用户浏览器语言
-  .use(initReactI18next) // 将 i18n 传递给 react-i18next
+  .use(LanguageDetector) 
+  .use(initReactI18next) 
   .init({
     resources: {
       en: {
@@ -21,10 +21,10 @@ i18n
         translation: thTranslations,
       },
     },
-    fallbackLng: 'en', // 默认语言
+    fallbackLng: 'en', 
     debug: false,
     interpolation: {
-      escapeValue: false, // React 已经转义了
+      escapeValue: false, 
     },
     detection: {
       order: ['localStorage', 'navigator'],

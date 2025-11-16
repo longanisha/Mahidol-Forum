@@ -20,17 +20,13 @@ export function Header() {
     { id: 'announcements', label: t('header.announcements'), description: t('header.announcementsDesc') },
   ]
   
-  // 在 admin 页面隐藏导航项
+  // Admin
   const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin')
   
-  // 获取当前视图（只在首页时使用）
+  // Current View
   const currentView = location.pathname === '/' ? (searchParams.get('view') || 'discussions') : null
   
-  // 当用户登录后，如果profile没有加载，等待AuthContext加载（不主动刷新，避免频繁请求）
-  // AuthContext会在用户登录时自动加载profile，这里只需要等待
-  // 如果profile确实需要刷新，可以在用户操作（如上传头像）后手动调用refreshProfile
-  
-  // 当 profile 或 avatar_url 改变时，重置头像错误状态
+
   useEffect(() => {
     if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
       console.log('[Header] Avatar URL changed, resetting error state')
@@ -38,7 +34,7 @@ export function Header() {
     }
   }, [profile?.avatar_url])
   
-  // 调试：打印profile和avatar_url状态
+  // Profile
   useEffect(() => {
     if (user) {
       console.log('[Header] ====== Avatar Display Debug ======')
@@ -55,7 +51,6 @@ export function Header() {
     }
   }, [user, profile, avatarError])
   
-  // 点击外部关闭菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -72,7 +67,6 @@ export function Header() {
     }
   }, [isMenuOpen])
   
-  // 判断菜单项是否激活
   const isActive = (itemId: string) => {
     if (!currentView) return false
     if (itemId === 'line-group') {
@@ -81,7 +75,7 @@ export function Header() {
     return currentView === itemId
   }
   
-  // 处理菜单点击
+
   const handleMenuClick = (itemId: string) => {
     setIsMenuOpen(false)
     if (itemId === 'line-group') {
@@ -97,23 +91,19 @@ export function Header() {
 
   const handleSignOut = async () => {
     try {
-      // 直接清除所有状态和 localStorage
       if (typeof window !== 'undefined') {
-        // 清除所有 localStorage
+        // localStorage
         localStorage.clear()
-        // 清除 sessionStorage
+        // sessionStorage
         sessionStorage.clear()
       }
       
-      // 调用 signOut
       await signOut()
       
-      // 立即导航到首页并重新加载
       navigate('/', { replace: true })
-      window.location.href = '/' // 使用 href 而不是 reload，确保完全刷新
+      window.location.href = '/' 
     } catch (error) {
       console.error('Sign out error:', error)
-      // 即使出错也清除并重定向
       if (typeof window !== 'undefined') {
         localStorage.clear()
         sessionStorage.clear()
@@ -128,7 +118,6 @@ export function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 gap-4">
           <div className="flex items-center gap-3">
-            {/* 移动端菜单按钮 */}
             {!isAdminPage && (
               <button
                 type="button"
@@ -174,7 +163,6 @@ export function Header() {
             </Link>
           </div>
 
-          {/* 移动端菜单下拉 */}
           {!isAdminPage && isMenuOpen && (
             <div 
               ref={menuRef}
@@ -232,12 +220,10 @@ export function Header() {
                     alt={profile?.username || user.email || 'User'}
                     className="w-full h-full object-cover"
                     onError={(e) => {
-                      // 如果图片加载失败，设置错误状态
                       console.warn('[Header] Avatar image failed to load:', profile.avatar_url, e)
                       setAvatarError(true)
                     }}
                     onLoad={() => {
-                      // 图片加载成功，重置错误状态
                       setAvatarError(false)
                     }}
                   />

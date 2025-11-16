@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type JSXElementConstructor, type Key, type ReactElement, type ReactNode, type ReactPortal } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../../lib/api'
@@ -123,7 +123,7 @@ export function ThreadComposer({ onSuccess }: ThreadComposerProps) {
               <div className="mt-2 p-3 bg-warm/10 border border-warm/20 rounded-lg">
                 <p className="text-xs font-semibold text-warm mb-2">Similar posts found:</p>
                 <ul className="space-y-1">
-                  {similarPosts.map((post) => (
+                  {similarPosts.map((post: { id: Key | null | undefined; title: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | Iterable<ReactNode> | null | undefined; reply_count: string | number | bigint | boolean | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | ReactPortal | Promise<string | number | bigint | boolean | ReactPortal | ReactElement<unknown, string | JSXElementConstructor<any>> | Iterable<ReactNode> | null | undefined> | Iterable<ReactNode> | null | undefined }) => (
                     <li key={post.id}>
                       <Link
                         to={`/thread/${post.id}`}

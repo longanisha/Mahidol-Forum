@@ -8,13 +8,13 @@ import { useAuth } from '../../context/AuthContext'
 export type PostWithAuthor = {
   id: string
   content: string
-  post_id: string  // 原 thread_id
+  post_id: string  // thread_id
   author_id: string
   created_at: string
   upvote_count?: number
   downvote_count?: number
   user_vote?: string | null
-  parent_reply_id?: string | null  // 原 parent_post_id
+  parent_reply_id?: string | null  // parent_post_id
   replies?: PostWithAuthor[]
   author?: {
     username: string | null

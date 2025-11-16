@@ -24,7 +24,7 @@ export function ForumFilters({
   const { i18n } = useTranslation()
   const [isTagsExpanded, setIsTagsExpanded] = useState(false)
   
-  // 估算第一行能显示多少个标签（根据常见屏幕宽度，大约8-10个）
+  
   const TAGS_PER_ROW = 8
   const visibleTags = isTagsExpanded ? tags : tags.slice(0, TAGS_PER_ROW)
   const hasMoreTags = tags.length > TAGS_PER_ROW

@@ -16,27 +16,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
   })
 }
 
-// 自定义 storage 适配器：使用 sessionStorage（关闭标签页时自动清除）
-// 但需要手动处理刷新页面的情况
+
 const sessionStorageAdapter = {
   getItem: (key: string): string | null => {
     if (typeof window === 'undefined') return null
     try {
-      // 首先检查 sessionStorage 中是否有值
-      // 注意：在页面刷新（包括强制刷新）时，sessionStorage 应该保留
+      
       const sessionValue = sessionStorage.getItem(key)
       if (sessionValue) {
         console.log('[Supabase] Found session in sessionStorage')
         return sessionValue
       }
       
-      // 如果 sessionStorage 中没有，可能是首次加载
-      // 尝试从 localStorage 迁移到 sessionStorage（向后兼容）
+      
       const localValue = localStorage.getItem(key)
       if (localValue) {
         console.log('[Supabase] Migrating token from localStorage to sessionStorage')
         sessionStorage.setItem(key, localValue)
-        // 标记为已刷新，防止被清除
+        
         sessionStorage.setItem('_page_refresh', 'true')
         return localValue
       }
@@ -52,7 +49,7 @@ const sessionStorageAdapter = {
     if (typeof window === 'undefined') return
     try {
       sessionStorage.setItem(key, value)
-      // 标记为已刷新，防止被清除
+  
       sessionStorage.setItem('_page_refresh', 'true')
       console.log('[Supabase] Session saved to sessionStorage')
     } catch (error) {
@@ -63,7 +60,6 @@ const sessionStorageAdapter = {
     if (typeof window === 'undefined') return
     try {
       sessionStorage.removeItem(key)
-      // 同时清除 localStorage 中的对应项（如果存在）
       localStorage.removeItem(key)
       console.log('[Supabase] Session removed from storage')
     } catch (error) {
@@ -79,9 +75,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'mahidol-forum-auth',
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    // 确保在刷新时能够恢复 session
     flowType: 'pkce',
-    // 确保在页面加载时自动恢复 session
     storageSync: true,
   },
   global: {
