@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
@@ -17,17 +17,21 @@ type SimilarPost = {
   reply_count: number
 }
 
-async function fetchHotTags(): Promise<HotTag[]> {
-  return apiFetch<HotTag[]>('/posts/hot-tags?limit=30')
+async function fetchHotTags(category?: string): Promise<HotTag[]> {
+  const url = category
+    ? `/posts/hot-tags?limit=30&category=${encodeURIComponent(category)}`
+    : '/posts/hot-tags?limit=30'
+  return apiFetch<HotTag[]>(url)
 }
 
 export function CreateThreadPage() {
   const { user, accessToken } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const [title, setTitle] = useState('')
   const [debouncedTitle, setDebouncedTitle] = useState('')
-  const [category, setCategory] = useState('General')
+  const [category, setCategory] = useState(searchParams.get('category') || 'General')
   const [content, setContent] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
@@ -58,8 +62,8 @@ export function CreateThreadPage() {
 
   // 延迟加载 hot-tags，不阻塞页面初始渲染
   const { data: hotTags = [], isLoading: tagsLoading, isError: tagsError } = useQuery({
-    queryKey: ['hot-tags'],
-    queryFn: fetchHotTags,
+    queryKey: ['hot-tags', category],
+    queryFn: () => category === 'Flea Market' ? fetchHotTags('Flea Market') : fetchHotTags(),
     enabled: shouldLoadTags, // 只有在 shouldLoadTags 为 true 时才请求
     staleTime: 10 * 60 * 1000, // 10 minutes - 热门标签更新不频繁，可以缓存更久
     gcTime: 30 * 60 * 1000, // 30 minutes - 缓存保留时间
@@ -92,7 +96,7 @@ export function CreateThreadPage() {
       if (validTags.length === 0) {
         throw new Error('At least one tag is required.')
       }
-      
+
       const requestBody: {
         title: string
         category?: string
@@ -102,12 +106,12 @@ export function CreateThreadPage() {
         title: title.trim(),
         tags: validTags,  // tags is required
       }
-      
+
       // Only include optional fields if they have values
       if (category && category.trim()) {
         requestBody.category = category.trim()
       }
-      
+
       if (content && content.trim()) {
         // Extract plain text from HTML for summary (first 500 chars)
         const textContent = content.replace(/<[^>]*>/g, '').trim()
@@ -116,7 +120,7 @@ export function CreateThreadPage() {
         }
       }
 
-            await apiFetch('/posts', {
+      await apiFetch('/posts', {
         method: 'POST',
         body: JSON.stringify(requestBody),
         accessToken,
@@ -124,7 +128,12 @@ export function CreateThreadPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] })
-      navigate('/')
+      // Redirect to flea market tab if posting to Flea Market category
+      if (category === 'Flea Market') {
+        navigate('/?view=flea-market')
+      } else {
+        navigate('/')
+      }
     },
     onError: (mutationError: unknown) => {
       const message =
@@ -233,6 +242,7 @@ export function CreateThreadPage() {
                 className="w-full px-4 py-2.5 rounded-xl border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
               >
                 <option value="General">General</option>
+                <option value="Flea Market">Flea Market</option>
                 <option value="Academics">Academics</option>
                 <option value="Research">Research</option>
                 <option value="Student Life">Student Life</option>
@@ -256,7 +266,39 @@ export function CreateThreadPage() {
             <label className="block text-sm font-semibold text-primary mb-3">
               Tags * <span className="text-primary/60 text-xs font-normal">(at least one tag is required)</span>
             </label>
-            {tagsLoading ? (
+            {category === 'Flea Market' ? (
+              tagsLoading ? (
+                <div className="text-sm text-primary/60">Loading tags...</div>
+              ) : tagsError ? (
+                <div className="text-sm text-warm">Failed to load tags. Please refresh the page to try again.</div>
+              ) : hotTags.length === 0 ? (
+                <div className="text-sm text-warm mb-3">
+                  No tags available yet. Please contact an administrator to add tags to the system.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {hotTags.map((hotTag) => {
+                    const isHot = hotTag.count >= hotTagThreshold
+                    return (
+                      <button
+                        key={hotTag.tag}
+                        type="button"
+                        onClick={() => handleTagToggle(hotTag.tag)}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-1.5 ${selectedTags.includes(hotTag.tag)
+                          ? 'bg-accent text-white shadow-md'
+                          : 'bg-white text-primary/70 border border-primary/15 hover:border-accent/50 hover:text-accent'
+                          }`}
+                      >
+                        {isHot && (
+                          <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>
+                        )}
+                        {hotTag.tag} ({hotTag.count})
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            ) : tagsLoading ? (
               <div className="text-sm text-primary/60">Loading tags...</div>
             ) : tagsError ? (
               <div className="text-sm text-warm">Failed to load tags. Please refresh the page to try again.</div>
@@ -273,11 +315,10 @@ export function CreateThreadPage() {
                       key={hotTag.tag}
                       type="button"
                       onClick={() => handleTagToggle(hotTag.tag)}
-                      className={`px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-1.5 ${
-                        selectedTags.includes(hotTag.tag)
-                          ? 'bg-accent text-white shadow-md'
-                          : 'bg-white text-primary/70 border border-primary/15 hover:border-accent/50 hover:text-accent'
-                      }`}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold transition flex items-center gap-1.5 ${selectedTags.includes(hotTag.tag)
+                        ? 'bg-accent text-white shadow-md'
+                        : 'bg-white text-primary/70 border border-primary/15 hover:border-accent/50 hover:text-accent'
+                        }`}
                     >
                       {isHot && (
                         <i className="fa-solid fa-fire text-warm" title="Hot tag"></i>

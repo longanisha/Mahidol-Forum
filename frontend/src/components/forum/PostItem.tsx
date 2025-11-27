@@ -25,9 +25,10 @@ type PostItemProps = {
   post: PostWithAuthor
   threadId: string
   depth?: number
+  threadIsClosed?: boolean
 }
 
-export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
+export function PostItem({ post, threadId, depth = 0, threadIsClosed = false }: PostItemProps) {
   const { user, accessToken } = useAuth()
   const queryClient = useQueryClient()
   const [showReplyForm, setShowReplyForm] = useState(false)
@@ -179,14 +180,17 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
                   <span>{post.downvote_count ?? 0}</span>
                 </button>
               </div>
-              {/* Reply button */}
-              {depth < maxDepth && (
+              {/* Reply button (disabled when thread is closed) */}
+              {depth < maxDepth && !threadIsClosed && (
                 <button
                   onClick={() => setShowReplyForm(!showReplyForm)}
                   className="text-sm text-accent hover:text-accent/80 font-semibold transition"
                 >
                   {showReplyForm ? 'Cancel reply' : 'Reply'}
                 </button>
+              )}
+              {depth < maxDepth && threadIsClosed && (
+                <span className="text-sm text-primary/60">Replies disabled (thread closed)</span>
               )}
               {/* Report button */}
               {user && (
@@ -203,7 +207,7 @@ export function PostItem({ post, threadId, depth = 0 }: PostItemProps) {
         </div>
       </article>
       
-      {showReplyForm && (
+      {showReplyForm && !threadIsClosed && (
         <div className="mt-3 ml-4">
           <ReplyComposer threadId={threadId} parentPostId={post.id} onSuccess={() => setShowReplyForm(false)} />
         </div>

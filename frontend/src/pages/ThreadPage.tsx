@@ -241,7 +241,9 @@ export function ThreadPage() {
             No replies yet. Start the conversation below.
           </div>
         ) : (
-          sortedReplies.map((reply) => <PostItem key={reply.id} post={reply} threadId={threadId} />)
+          sortedReplies.map((reply) => (
+            <PostItem key={reply.id} post={reply} threadId={threadId} threadIsClosed={Boolean(thread.is_closed)} />
+          ))
         )}
         </section>
 

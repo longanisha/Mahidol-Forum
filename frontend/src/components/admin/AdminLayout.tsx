@@ -19,6 +19,7 @@ const MENU_ITEMS: MenuItem[] = [
   { id: 'reports', label: 'Reports', icon: '📝', section: 'menu' },
   { id: 'creation-requests', label: 'Creation Requests', icon: '➕', section: 'menu' },
   { id: 'tags', label: 'Tags', icon: '🏷️', section: 'menu' },
+  { id: 'posts', label: 'Posts', icon: '📄', section: 'menu' },
   { id: 'points', label: 'Points', icon: '⭐', section: 'others' },
   { id: 'announcements', label: 'Announcements', icon: '📢', section: 'others' },
 ]
@@ -150,11 +151,10 @@ export function AdminLayout({ activeMenu, onMenuChange, children }: AdminLayoutP
                   <li key={item.id}>
                     <button
                       onClick={() => onMenuChange(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                        isActive
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${isActive
                           ? 'bg-blue-50 border-l-4 border-blue-500 text-blue-600'
                           : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <span className="text-base">{item.icon}</span>
                       <span>{item.label}</span>
@@ -175,11 +175,10 @@ export function AdminLayout({ activeMenu, onMenuChange, children }: AdminLayoutP
                   <li key={item.id}>
                     <button
                       onClick={() => onMenuChange(item.id)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${
-                        isActive
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition ${isActive
                           ? 'bg-blue-50 border-l-4 border-blue-500 text-blue-600'
                           : 'text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       <span className="text-base">{item.icon}</span>
                       <span>{item.label}</span>
@@ -207,15 +206,14 @@ export function AdminLayout({ activeMenu, onMenuChange, children }: AdminLayoutP
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <div
-                          className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                            index === 0
+                          className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${index === 0
                               ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
                               : index === 1
                                 ? 'bg-gradient-to-br from-gray-300 to-gray-500'
                                 : index === 2
                                   ? 'bg-gradient-to-br from-orange-400 to-orange-600'
                                   : 'bg-gradient-to-br from-blue-400 to-blue-600'
-                          }`}
+                            }`}
                         >
                           {index + 1}
                         </div>

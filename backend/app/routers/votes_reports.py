@@ -142,7 +142,7 @@ async def vote_post(
               try:
                 success = await asyncio.wait_for(
                   asyncio.to_thread(
-                    lambda: award_points(supabase, post_author_id, 2, '帖子被点赞')
+                    lambda: award_points(supabase, post_author_id, 2, 'The post was liked')
                   ),
                   timeout=10.0
                 )

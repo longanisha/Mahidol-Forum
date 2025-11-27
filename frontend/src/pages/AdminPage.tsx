@@ -4,6 +4,8 @@ import { apiFetch } from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { AdminLayout } from '../components/admin/AdminLayout'
+import { PostsManagement } from '../components/admin/PostsManagement'
+import { TagsManagement } from '../components/admin/TagsManagement'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 type AdminStats = {
@@ -176,15 +178,20 @@ async function fetchAnnouncements(): Promise<Announcement[]> {
   })
 }
 
-async function fetchTags(): Promise<Tag[]> {
+async function fetchTags(page: number = 1, pageSize: number = 20, category?: string): Promise<{ tags: Tag[], total: number }> {
   const { adminId, adminEmail } = getAdminCredentials()
-  return apiFetch<Tag[]>('/admin/tags?limit=1000', {
+  const url = category
+    ? `/admin/tags?page=${page}&page_size=${pageSize}&category=${encodeURIComponent(category)}`
+    : `/admin/tags?page=${page}&page_size=${pageSize}`
+  const response = await apiFetch<Tag[]>(url, {
     adminId,
     adminEmail,
   })
+  // For now, return all tags as we don't have pagination in backend yet
+  return { tags: response, total: response.length }
 }
 
-type MenuType = 'overview' | 'users' | 'groups' | 'applications' | 'reports' | 'creation-requests' | 'tags' | 'points' | 'announcements'
+type MenuType = 'overview' | 'users' | 'groups' | 'applications' | 'reports' | 'creation-requests' | 'tags' | 'points' | 'announcements' | 'posts'
 
 type Announcement = {
   id: string
@@ -224,7 +231,7 @@ export function AdminPage() {
   const [isUploadingQrCode, setIsUploadingQrCode] = useState(false)
   const [showQrCodePreviewModal, setShowQrCodePreviewModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  
+
   // User CRUD states
   const [showCreateUserModal, setShowCreateUserModal] = useState(false)
   const [showEditUserModal, setShowEditUserModal] = useState(false)
@@ -236,7 +243,7 @@ export function AdminPage() {
   const [editUserEmail, setEditUserEmail] = useState('')
   const [editUserPassword, setEditUserPassword] = useState('')
   const [editUserPoints, setEditUserPoints] = useState<number>(0)
-  
+
   // 简化的权限检查：只检查 localStorage 中是否有 admin_id
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
 
@@ -244,7 +251,7 @@ export function AdminPage() {
     // 检查是否有 admin 登录信息
     const adminId = localStorage.getItem('admin_id')
     const adminEmail = localStorage.getItem('admin_email')
-    
+
     if (adminId && adminEmail) {
       console.log('[AdminPage] Admin authorized via localStorage')
       setIsAuthorized(true)
@@ -292,7 +299,7 @@ export function AdminPage() {
       if (!groups.length) return {}
       const { adminId, adminEmail } = getAdminCredentials()
       const counts: Record<string, number> = {}
-      
+
       // 为每个群组获取所有 applications，然后计算 pending 数量
       await Promise.all(
         groups.map(async (group) => {
@@ -308,7 +315,7 @@ export function AdminPage() {
           }
         })
       )
-      
+
       return counts
     },
     enabled: isAuthorized === true && activeMenu === 'applications' && groups.length > 0,
@@ -452,7 +459,7 @@ export function AdminPage() {
   const [newAnnouncementContent, setNewAnnouncementContent] = useState('')
   const [newAnnouncementPriority, setNewAnnouncementPriority] = useState(0)
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null)
-  
+
   // Tags management states
   const [showRenameTagModal, setShowRenameTagModal] = useState(false)
   const [showMergeTagModal, setShowMergeTagModal] = useState(false)
@@ -464,6 +471,9 @@ export function AdminPage() {
   const [mergeTargetTag, setMergeTargetTag] = useState('')
   const [newTagName, setNewTagName] = useState('')
   const [tagSearchQuery, setTagSearchQuery] = useState('')
+  const [tagCategory, setTagCategory] = useState<'all' | 'general' | 'flea-market'>('all')
+  const [tagPage, setTagPage] = useState(1)
+  const tagPageSize = 20
 
   const { mutate: createAnnouncement, isPending: isCreatingAnnouncement } = useMutation({
     mutationFn: async (data: { title: string; content: string; priority: number; is_active: boolean }) => {
@@ -804,7 +814,7 @@ export function AdminPage() {
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!newGroupName.trim()) {
       alert('Please provide group name')
       return
@@ -1098,11 +1108,10 @@ export function AdminPage() {
                         <button
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1.5 rounded text-sm font-medium ${
-                            currentPage === pageNum
-                              ? 'bg-blue-500 text-white'
-                              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                          }`}
+                          className={`px-3 py-1.5 rounded text-sm font-medium ${currentPage === pageNum
+                            ? 'bg-blue-500 text-white'
+                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                            }`}
                         >
                           {pageNum}
                         </button>
@@ -1114,11 +1123,10 @@ export function AdminPage() {
                     {totalPages > 4 && (
                       <button
                         onClick={() => setCurrentPage(totalPages)}
-                        className={`px-3 py-1.5 rounded text-sm font-medium ${
-                          currentPage === totalPages
-                            ? 'bg-blue-500 text-white'
-                            : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                        }`}
+                        className={`px-3 py-1.5 rounded text-sm font-medium ${currentPage === totalPages
+                          ? 'bg-blue-500 text-white'
+                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
                       >
                         {totalPages}
                       </button>
@@ -1167,27 +1175,27 @@ export function AdminPage() {
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={weeklyStats.weekly_data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                        <XAxis 
-                          dataKey="week" 
+                        <XAxis
+                          dataKey="week"
                           stroke="#666"
                           style={{ fontSize: '12px' }}
                         />
-                        <YAxis 
+                        <YAxis
                           stroke="#666"
                           style={{ fontSize: '12px' }}
                         />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: '#fff', 
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fff',
                             border: '1px solid #e0e0e0',
                             borderRadius: '8px'
                           }}
                         />
                         <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="new_users" 
-                          stroke="#ff7473" 
+                        <Line
+                          type="monotone"
+                          dataKey="new_users"
+                          stroke="#ff7473"
                           strokeWidth={2}
                           name="New Users"
                           dot={{ fill: '#ff7473', r: 4 }}
@@ -1206,27 +1214,27 @@ export function AdminPage() {
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={weeklyStats.weekly_data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                        <XAxis 
-                          dataKey="week" 
+                        <XAxis
+                          dataKey="week"
                           stroke="#666"
                           style={{ fontSize: '12px' }}
                         />
-                        <YAxis 
+                        <YAxis
                           stroke="#666"
                           style={{ fontSize: '12px' }}
                         />
-                        <Tooltip 
-                          contentStyle={{ 
-                            backgroundColor: '#fff', 
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fff',
                             border: '1px solid #e0e0e0',
                             borderRadius: '8px'
                           }}
                         />
                         <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="new_posts" 
-                          stroke="#47b8e0" 
+                        <Line
+                          type="monotone"
+                          dataKey="new_posts"
+                          stroke="#47b8e0"
                           strokeWidth={2}
                           name="New Posts"
                           dot={{ fill: '#47b8e0', r: 4 }}
@@ -1510,7 +1518,7 @@ export function AdminPage() {
                       <label className="block text-sm font-semibold text-primary mb-2">
                         QR Code Image *
                       </label>
-                      
+
                       {/* 文件上传 */}
                       <div className="mb-3">
                         <input
@@ -1558,7 +1566,7 @@ export function AdminPage() {
                           className="w-full px-4 py-2.5 rounded-xl border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
                         />
                       </div>
-                      
+
                       <p className="text-xs text-primary/60 mt-2">
                         Upload an image file (max 5MB) or provide a URL to your LINE group QR code
                       </p>
@@ -1640,9 +1648,8 @@ export function AdminPage() {
                         return (
                           <tr
                             key={group.id}
-                            className={`hover:bg-gray-50 cursor-pointer ${
-                              selectedGroup === group.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
-                            }`}
+                            className={`hover:bg-gray-50 cursor-pointer ${selectedGroup === group.id ? 'bg-blue-50 border-l-4 border-blue-500' : ''
+                              }`}
                             onClick={() => setSelectedGroup(group.id)}
                           >
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -1765,13 +1772,12 @@ export function AdminPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                                  app.status === 'approved'
-                                    ? 'bg-green-100 text-green-700'
-                                    : app.status === 'rejected'
-                                      ? 'bg-red-100 text-red-700'
-                                      : 'bg-yellow-100 text-yellow-700'
-                                }`}
+                                className={`px-2 py-1 rounded-full text-xs font-semibold ${app.status === 'approved'
+                                  ? 'bg-green-100 text-green-700'
+                                  : app.status === 'rejected'
+                                    ? 'bg-red-100 text-red-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                  }`}
                               >
                                 {app.status}
                               </span>
@@ -1850,13 +1856,12 @@ export function AdminPage() {
                           </div>
                         </div>
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            report.status === 'resolved'
-                              ? 'bg-green-100 text-green-700'
-                              : report.status === 'dismissed'
-                                ? 'bg-warm/20 text-warm'
-                                : 'bg-primary/10 text-primary'
-                          }`}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${report.status === 'resolved'
+                            ? 'bg-green-100 text-green-700'
+                            : report.status === 'dismissed'
+                              ? 'bg-warm/20 text-warm'
+                              : 'bg-primary/10 text-primary'
+                            }`}
                         >
                           {report.status}
                         </span>
@@ -1952,11 +1957,10 @@ export function AdminPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              request.is_private
-                                ? 'bg-purple-100 text-purple-700'
-                                : 'bg-blue-100 text-blue-700'
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${request.is_private
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                              }`}
                           >
                             {request.is_private ? '🔒 Private' : '🌐 Public'}
                           </span>
@@ -1968,13 +1972,12 @@ export function AdminPage() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              request.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : request.status === 'rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            }`}
+                            className={`px-2 py-1 rounded-full text-xs font-semibold ${request.status === 'approved'
+                              ? 'bg-green-100 text-green-700'
+                              : request.status === 'rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}
                           >
                             {request.status}
                           </span>
@@ -2162,160 +2165,14 @@ export function AdminPage() {
         )}
 
         {/* Tags Management */}
-        {activeMenu === 'tags' && (
-          <div className="bg-white rounded-2xl border border-primary/10 shadow-sm">
-            <div className="p-6 border-b border-primary/10 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-primary">Tags Management</h2>
-                <p className="text-sm text-primary/70 mt-1">
-                  Manage and organize post tags across the forum
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setNewTagName('')
-                  setShowCreateTagModal(true)
-                }}
-                className="px-4 py-2 bg-[#1D4F91] text-white text-sm font-semibold rounded-lg hover:bg-[#1a4380] transition shadow-sm hover:shadow"
-              >
-                + Create Tag
-              </button>
-            </div>
-            <div className="p-6">
-              {/* Search */}
-              <div className="mb-6">
-                <input
-                  type="text"
-                  value={tagSearchQuery}
-                  onChange={(e) => setTagSearchQuery(e.target.value)}
-                  placeholder="Search tags by name..."
-                  className="w-full max-w-md px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
-                />
-                {tags.length > 0 && (
-                  <p className="text-xs text-primary/60 mt-2">
-                    Showing {tags.filter(tag => 
-                      tagSearchQuery === '' || 
-                      tag.tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
-                    ).length} of {tags.length} tags
-                  </p>
-                )}
-              </div>
-              
-              {tagsLoading ? (
-                <div className="p-8 text-center text-primary/60">Loading tags…</div>
-              ) : tagsError ? (
-                <div className="p-8 text-center">
-                  <div className="text-warm font-semibold mb-2">Failed to load tags</div>
-                  <div className="text-sm text-primary/60">
-                    {tagsErrorDetail instanceof Error ? tagsErrorDetail.message : 'Unknown error'}
-                  </div>
-                  <button
-                    onClick={() => {
-                      queryClient.invalidateQueries({ queryKey: ['admin', 'tags'] })
-                    }}
-                    className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 transition"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : tags.length === 0 ? (
-                <div className="p-8 text-center">
-                  <div className="text-primary/60 mb-2">No tags found</div>
-                  <div className="text-xs text-primary/50">
-                    Tags will appear here when posts are created with tags.
-                  </div>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Tag Name
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Usage Count
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {tags
-                        .filter(tag => 
-                          tagSearchQuery === '' || 
-                          tag.tag.toLowerCase().includes(tagSearchQuery.toLowerCase())
-                        )
-                        .map((tag) => (
-                        <tr key={tag.tag} className="hover:bg-gray-50 transition">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <span className="px-3 py-1.5 rounded-full text-sm font-semibold text-blue-700 bg-blue-100 border border-blue-200">
-                                {tag.tag}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-gray-900">{tag.count}</span>
-                              <span className="text-xs text-gray-500">
-                                {tag.count === 1 ? 'post' : 'posts'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => {
-                                  setEditingTag(tag)
-                                  setRenameOldTag(tag.tag)
-                                  setRenameNewTag(tag.tag)
-                                  setShowRenameTagModal(true)
-                                }}
-                                className="px-3 py-1.5 bg-blue-500 text-white text-xs font-semibold rounded hover:bg-blue-600 transition shadow-sm hover:shadow"
-                                title="Rename this tag"
-                              >
-                                Rename
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (confirm(`Are you sure you want to delete the tag "${tag.tag}"? This will remove it from all ${tag.count} posts.`)) {
-                                    deleteTag(tag.tag)
-                                  }
-                                }}
-                                disabled={isDeletingTag}
-                                className="px-3 py-1.5 bg-red-500 text-white text-xs font-semibold rounded hover:bg-red-600 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
-                                title="Delete this tag"
-                              >
-                                Delete
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setMergeSourceTags([tag.tag])
-                                  setMergeTargetTag('')
-                                  setShowMergeTagModal(true)
-                                }}
-                                className="px-3 py-1.5 bg-purple-500 text-white text-xs font-semibold rounded hover:bg-purple-600 transition shadow-sm hover:shadow"
-                                title="Merge this tag with others"
-                              >
-                                Merge
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+        {activeMenu === 'tags' && <TagsManagement />}
+
+        {/* Posts Management */}
+        {activeMenu === 'posts' && <PostsManagement />}
 
         {/* Rename Tag Modal */}
         {showRenameTagModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -2401,7 +2258,7 @@ export function AdminPage() {
 
         {/* Create Tag Modal */}
         {showCreateTagModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -2477,7 +2334,7 @@ export function AdminPage() {
 
         {/* Merge Tags Modal */}
         {showMergeTagModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -2592,7 +2449,7 @@ export function AdminPage() {
 
         {/* Create/Edit Announcement Modal */}
         {showCreateAnnouncementModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -2713,8 +2570,8 @@ export function AdminPage() {
                     {isCreatingAnnouncement || isUpdatingAnnouncement
                       ? 'Saving...'
                       : editingAnnouncement
-                      ? 'Update Announcement'
-                      : 'Create Announcement'}
+                        ? 'Update Announcement'
+                        : 'Create Announcement'}
                   </button>
                   <button
                     type="button"
@@ -2734,7 +2591,7 @@ export function AdminPage() {
 
         {/* QR Code Preview Modal */}
         {showQrCodePreviewModal && qrCodePreview && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={() => setShowQrCodePreviewModal(false)}
           >
@@ -2760,7 +2617,7 @@ export function AdminPage() {
 
         {/* Create User Modal */}
         {showCreateUserModal && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
@@ -2875,7 +2732,7 @@ export function AdminPage() {
 
         {/* Edit User Modal */}
         {showEditUserModal && editingUser && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
             onClick={(e) => {
               if (e.target === e.currentTarget) {

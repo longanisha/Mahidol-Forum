@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const MENU_ITEMS = [
   { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
+  { id: 'flea-market', label: 'Flea Market', description: 'Buy, sell, and trade items' },
   { id: 'line-group', label: 'Line Group', description: 'Join LINE groups and communities' },
   { id: 'announcements', label: 'Announcements', description: 'Moderation and campus updates' },
 ]
@@ -16,17 +17,17 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  
+
   // 在 admin 页面隐藏导航项
   const isAdminPage = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin')
-  
+
   // 获取当前视图（只在首页时使用）
   const currentView = location.pathname === '/' ? (searchParams.get('view') || 'discussions') : null
-  
+
   // 当用户登录后，如果profile没有加载，等待AuthContext加载（不主动刷新，避免频繁请求）
   // AuthContext会在用户登录时自动加载profile，这里只需要等待
   // 如果profile确实需要刷新，可以在用户操作（如上传头像）后手动调用refreshProfile
-  
+
   // 当 profile 或 avatar_url 改变时，重置头像错误状态
   useEffect(() => {
     if (profile?.avatar_url && profile.avatar_url.trim() !== '') {
@@ -34,7 +35,7 @@ export function Header() {
       setAvatarError(false)
     }
   }, [profile?.avatar_url])
-  
+
   // 调试：打印profile和avatar_url状态
   useEffect(() => {
     if (user) {
@@ -51,7 +52,7 @@ export function Header() {
       console.log('[Header] ====================================')
     }
   }, [user, profile, avatarError])
-  
+
   // 点击外部关闭菜单
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,16 +60,16 @@ export function Header() {
         setIsMenuOpen(false)
       }
     }
-    
+
     if (isMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
-    
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isMenuOpen])
-  
+
   // 判断菜单项是否激活
   const isActive = (itemId: string) => {
     if (!currentView) return false
@@ -77,7 +78,7 @@ export function Header() {
     }
     return currentView === itemId
   }
-  
+
   // 处理菜单点击
   const handleMenuClick = (itemId: string) => {
     setIsMenuOpen(false)
@@ -85,6 +86,8 @@ export function Header() {
       navigate('/?view=line-groups')
     } else if (itemId === 'discussions') {
       navigate('/?view=discussions')
+    } else if (itemId === 'flea-market') {
+      navigate('/?view=flea-market')
     } else if (itemId === 'announcements') {
       navigate('/?view=announcements')
     } else {
@@ -101,10 +104,10 @@ export function Header() {
         // 清除 sessionStorage
         sessionStorage.clear()
       }
-      
+
       // 调用 signOut
       await signOut()
-      
+
       // 立即导航到首页并重新加载
       navigate('/', { replace: true })
       window.location.href = '/' // 使用 href 而不是 reload，确保完全刷新
@@ -157,11 +160,11 @@ export function Header() {
                 </svg>
               </button>
             )}
-            
+
             <Link to="/" className="flex items-center gap-3 text-primary hover:opacity-80 transition">
-              <img 
-                src="/forum_logo.png" 
-                alt="Mahidol Forum" 
+              <img
+                src="/forum_logo.png"
+                alt="Mahidol Forum"
                 className="h-10 w-auto"
               />
               <div>
@@ -173,7 +176,7 @@ export function Header() {
 
           {/* 移动端菜单下拉 */}
           {!isAdminPage && isMenuOpen && (
-            <div 
+            <div
               ref={menuRef}
               className="absolute top-16 left-0 right-0 bg-white border-b border-primary/10 shadow-lg lg:hidden z-50"
             >
@@ -189,16 +192,14 @@ export function Header() {
                         <button
                           type="button"
                           onClick={() => handleMenuClick(item.id)}
-                          className={`w-full flex items-center justify-between p-2.5 rounded-lg transition text-left ${
-                            active
+                          className={`w-full flex items-center justify-between p-2.5 rounded-lg transition text-left ${active
                               ? 'bg-accent/10 border border-accent/30'
                               : 'hover:bg-primary/5'
-                          }`}
+                            }`}
                         >
                           <div>
-                            <div className={`font-semibold text-sm ${
-                              active ? 'text-accent' : 'text-primary'
-                            }`}>
+                            <div className={`font-semibold text-sm ${active ? 'text-accent' : 'text-primary'
+                              }`}>
                               {item.label}
                             </div>
                             <div className="text-xs text-primary/60 mt-0.5">{item.description}</div>
@@ -248,7 +249,7 @@ export function Header() {
                 <div className="text-sm font-semibold text-primary">
                   {profile?.username || user.email?.split('@')[0] || 'Member'}
                 </div>
-                <button
+                {/* <button
                   type="button"
                   onClick={() => {
                     // Language switcher - placeholder
@@ -258,7 +259,7 @@ export function Header() {
                   title="Change language"
                 >
                   🌐
-                </button>
+                </button> */}
                 <button
                   type="button"
                   onClick={(e) => {

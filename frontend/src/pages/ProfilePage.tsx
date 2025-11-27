@@ -40,7 +40,7 @@ type LineGroupApplication = {
   } | null
 }
 
-type TabType = 'profile' | 'group-requests' | 'my-posts' | 'replies' | 'drafts' | 'points-history'
+type TabType = 'profile' | 'group-requests' | 'my-posts' | 'my-market-items' | 'replies' | 'drafts' | 'points-history'
 
 type PostWithAuthor = {
   id: string
@@ -111,7 +111,7 @@ async function fetchMyManagedGroupsApplications(accessToken: string | null): Pro
   })
 }
 
-async function fetchMyPosts(accessToken: string | null, page: number = 1): Promise<PaginatedPostResponse> {
+async function fetchMyPosts(accessToken: string | null, page: number = 1, category?: string): Promise<PaginatedPostResponse> {
   if (!accessToken) {
     console.log('[fetchMyPosts] No access token provided')
     return { items: [], total: 0, page: 1, page_size: 10, total_pages: 0 }
@@ -121,7 +121,11 @@ async function fetchMyPosts(accessToken: string | null, page: number = 1): Promi
   console.log('[fetchMyPosts] Token preview:', accessToken.substring(0, 50) + '...')
   console.log('[fetchMyPosts] Token ends with:', accessToken.substring(accessToken.length - 20))
   try {
-    const result = await apiFetch<PaginatedPostResponse>(`/posts/my-posts?page=${page}&page_size=10`, {
+    let url = `/posts/my-posts?page=${page}&page_size=10`
+    if (category) {
+      url += `&category=${encodeURIComponent(category)}`
+    }
+    const result = await apiFetch<PaginatedPostResponse>(url, {
       accessToken,
     })
     console.log('[fetchMyPosts] ====== Success, got', result.items?.length || 0, 'items ======')
@@ -187,10 +191,10 @@ export function ProfilePage() {
   const { user, profile, accessToken, refreshProfile, updateProfile } = useAuth()
   const queryClient = useQueryClient()
   const location = useLocation()
-  
+
   // 标记是否正在从数据库刷新 profile（用于区分显示数据库数据还是缓存数据）
   const [isRefreshingProfile, setIsRefreshingProfile] = useState(false)
-  
+
   // 当页面加载时，强制刷新profile以确保显示最新数据（每次进入页面都刷新，不使用缓存）
   useEffect(() => {
     console.log('[ProfilePage] ====== useEffect triggered ======')
@@ -198,13 +202,13 @@ export function ProfilePage() {
     console.log('[ProfilePage] User:', user ? `exists (${user.id})` : 'null')
     console.log('[ProfilePage] AccessToken:', accessToken ? 'exists' : 'null')
     console.log('[ProfilePage] refreshProfile function:', typeof refreshProfile)
-    
+
     // 确保在 /profile 路径下
     if (location.pathname !== '/profile') {
       console.log('[ProfilePage] Not on /profile path, skipping refresh')
       return
     }
-    
+
     // 检查用户和访问令牌是否准备好
     if (!user || !accessToken) {
       console.log('[ProfilePage] ⏳ Waiting for user and accessToken...', {
@@ -213,13 +217,13 @@ export function ProfilePage() {
       })
       return
     }
-    
+
     // 检查 refreshProfile 函数是否存在
     if (!refreshProfile || typeof refreshProfile !== 'function') {
       console.error('[ProfilePage] ❌ refreshProfile is not a function!', refreshProfile)
       return
     }
-    
+
     console.log('[ProfilePage] ====== ProfilePage loaded, forcing refresh from DATABASE ======')
     console.log('[ProfilePage] Current profile before refresh:', {
       username: profile?.username,
@@ -228,14 +232,14 @@ export function ProfilePage() {
     console.log('[ProfilePage] User ID:', user.id)
     console.log('[ProfilePage] AccessToken exists:', !!accessToken)
     console.log('[ProfilePage] Calling refreshProfile(true) to get fresh data from DATABASE...')
-    
+
     // 设置刷新状态，确保显示加载状态而不是旧的缓存数据
     setIsRefreshingProfile(true)
-    
+
     // 立即刷新，强制从服务器获取最新数据，不使用任何缓存
     const refreshPromise = refreshProfile(true) // 传递true表示强制刷新，清除 sessionStorage 并直接从数据库获取
     console.log('[ProfilePage] refreshProfile called, promise:', refreshPromise)
-    
+
     refreshPromise
       .then(() => {
         console.log('[ProfilePage] ✅ Profile refreshed from DATABASE on page load')
@@ -268,6 +272,7 @@ export function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeTab, setActiveTab] = useState<TabType>('profile')
   const [myPostsPage, setMyPostsPage] = useState(1)
+  const [myMarketItemsPage, setMyMarketItemsPage] = useState(1)
   const [repliesData, setRepliesData] = useState<Record<string, PostReply[]>>({})
   const [loadingReplies, setLoadingReplies] = useState<Record<string, boolean>>({})
   const [expandedPosts, setExpandedPosts] = useState<Set<string>>(new Set())
@@ -300,7 +305,7 @@ export function ProfilePage() {
   const displayUsername = isEditing
     ? editingUsername  // 编辑模式：使用正在编辑的值
     : (profile?.username ?? (isRefreshingProfile ? null : savedUsername) ?? user?.email?.split('@')[0] ?? 'Member')  // 非编辑模式：优先使用最新的 profile.username（数据库数据）
-  
+
   // 如果正在刷新且 profile 不存在，显示加载状态
   const isProfileLoading = isRefreshingProfile && !profile
 
@@ -344,12 +349,12 @@ export function ProfilePage() {
       console.log('[ProfilePage] Profile updated successfully:', updatedProfile)
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['points', 'profile'] })
-      
+
       // 保存成功后，更新显示的 username（只在保存成功后更新）
       const newUsername = updatedProfile.username ?? ''
       console.log('[ProfilePage] Setting saved username to:', newUsername)
       setSavedUsername(newUsername)
-      
+
       // 立即更新 AuthContext 中的 profile，确保 Header 和其他组件同步更新
       if (updatedProfile.username !== undefined || updatedProfile.avatar_url !== undefined) {
         updateProfile({
@@ -361,7 +366,7 @@ export function ProfilePage() {
           avatar_url: updatedProfile.avatar_url,
         })
       }
-      
+
       // 后台刷新完整 profile 数据（确保数据一致性，从数据库获取最新数据）
       refreshProfile(true) // 强制刷新，确保从数据库获取最新数据
         .then(() => {
@@ -370,7 +375,7 @@ export function ProfilePage() {
         .catch((err) => {
           console.warn('[ProfilePage] Failed to refresh profile in context:', err)
         })
-      
+
       setSuccess('Profile updated successfully!')
       setIsEditing(false)
       setTimeout(() => setSuccess(null), 3000)
@@ -416,24 +421,24 @@ export function ProfilePage() {
     return new Promise((resolve, reject) => {
       console.log('[Avatar] compressImage: Starting compression...')
       const reader = new FileReader()
-      
+
       reader.onload = (e) => {
         console.log('[Avatar] compressImage: File read, loading image...')
         const img = new Image()
-        
+
         // 设置超时，防止图片加载卡住
         const timeout = setTimeout(() => {
           reject(new Error('Image loading timeout'))
         }, 5000)
-        
+
         img.onload = () => {
           clearTimeout(timeout)
           console.log('[Avatar] compressImage: Image loaded, dimensions:', img.width, 'x', img.height)
-          
+
           // 快速计算新尺寸
           let width = Math.min(img.width, maxWidth)
           let height = Math.min(img.height, maxHeight)
-          
+
           // 保持宽高比
           if (img.width > img.height) {
             height = (img.height * maxWidth) / img.width
@@ -449,7 +454,7 @@ export function ProfilePage() {
           const canvas = document.createElement('canvas')
           canvas.width = width
           canvas.height = height
-          const ctx = canvas.getContext('2d', { 
+          const ctx = canvas.getContext('2d', {
             willReadFrequently: false,
             alpha: false
           })
@@ -478,21 +483,21 @@ export function ProfilePage() {
             quality
           )
         }
-        
+
         img.onerror = () => {
           clearTimeout(timeout)
           console.error('[Avatar] compressImage: Image load error')
           reject(new Error('Failed to load image'))
         }
-        
+
         img.src = e.target?.result as string
       }
-      
+
       reader.onerror = () => {
         console.error('[Avatar] compressImage: File read error')
         reject(new Error('Failed to read file'))
       }
-      
+
       reader.readAsDataURL(file)
     })
   }
@@ -513,7 +518,7 @@ export function ProfilePage() {
   // 快速上传头像到 Supabase Storage（如果失败，使用 base64 备用方案）
   const uploadAvatar = async (file: File): Promise<string> => {
     console.log('[Avatar] uploadAvatar called')
-    
+
     if (!user || !accessToken) {
       console.error('[Avatar] Missing user or accessToken')
       throw new Error('You must be logged in to upload avatar')
@@ -568,10 +573,10 @@ export function ProfilePage() {
       // Storage 上传失败，使用 base64 备用方案
       console.log('[Avatar] Storage upload failed, using base64 fallback')
       console.log('[Avatar] Converting to base64...')
-      
+
       const base64 = await fileToBase64(compressedFile)
       console.log('[Avatar] Base64 conversion complete, length:', base64.length)
-      
+
       // 返回 base64 数据 URL（可以直接存储到数据库）
       return base64
     }
@@ -614,21 +619,21 @@ export function ProfilePage() {
 
     console.log('[Avatar] Access token present, starting upload...')
     setIsUploadingAvatar(true)
-    
+
     const previewUrl = URL.createObjectURL(file)
-    
+
     try {
       const startTime = Date.now()
-      
+
       console.log('[Avatar] Step 1: Compressing image...')
       // 快速上传头像
       const avatarUrl = await uploadAvatar(file)
       console.log('[Avatar] Step 1 complete. URL:', avatarUrl)
-      
+
       console.log('[Avatar] Step 2: Updating database...')
       console.log('[Avatar] Calling API: PATCH /points/profile')
       console.log('[Avatar] Request body:', { avatar_url: avatarUrl })
-      
+
       // 更新数据库
       const updatedProfile = await apiFetch<{
         id: string
@@ -652,9 +657,9 @@ export function ProfilePage() {
         }
         return old
       })
-      
+
       // 立即更新 profile context，确保 Header 同步更新（同时更新avatar_url和username）
-      updateProfile({ 
+      updateProfile({
         avatar_url: avatarUrl,
         username: updatedProfile.username, // 同时更新username，确保完整同步
       })
@@ -662,23 +667,23 @@ export function ProfilePage() {
         avatar_url: avatarUrl,
         username: updatedProfile.username,
       })
-      
+
       // 后台刷新完整 profile 数据（确保数据一致性）
       refreshProfile().then(() => {
         console.log('[Avatar] Profile context refreshed from backend')
       }).catch((err) => {
         console.warn('[Avatar] Failed to refresh profile:', err)
       })
-      
+
       const elapsed = Date.now() - startTime
       console.log(`[Avatar] ====== Upload completed in ${elapsed}ms ======`)
-      
+
       // 清理预览 URL
       URL.revokeObjectURL(previewUrl)
-      
+
       setSuccess('Avatar updated successfully!')
       setTimeout(() => setSuccess(null), 2000)
-      
+
       // 刷新查询缓存
       queryClient.invalidateQueries({ queryKey: ['profile'] })
       queryClient.invalidateQueries({ queryKey: ['points', 'profile'] })
@@ -687,7 +692,7 @@ export function ProfilePage() {
       console.error('[Avatar] ====== Error occurred ======')
       console.error('[Avatar] Error:', err)
       console.error('[Avatar] Error type:', err instanceof Error ? err.constructor.name : typeof err)
-      
+
       let errorMessage = 'Failed to upload avatar'
       if (err instanceof Error) {
         errorMessage = err.message
@@ -709,12 +714,12 @@ export function ProfilePage() {
       } else {
         errorMessage = String(err)
       }
-      
+
       console.error('[Avatar] Error message:', errorMessage)
-      
+
       // 清理预览 URL
       URL.revokeObjectURL(previewUrl)
-      
+
       setError(errorMessage)
       setTimeout(() => setError(null), 5000)
     } finally {
@@ -771,6 +776,15 @@ export function ProfilePage() {
     gcTime: 5 * 60 * 1000, // 5分钟垃圾回收
     refetchOnMount: false, // 不阻塞页面渲染
     refetchOnWindowFocus: false, // 不阻塞页面渲染
+  })
+
+  const { data: myMarketItemsData, isLoading: myMarketItemsLoading, error: myMarketItemsError } = useQuery({
+    queryKey: ['profile', 'my-market-items', myMarketItemsPage, accessToken],
+    queryFn: () => fetchMyPosts(accessToken, myMarketItemsPage, 'Flea Market'),
+    enabled: !!accessToken && activeTab === 'my-market-items',
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   })
 
   const { data: allReplies = [], isLoading: allRepliesLoading, error: allRepliesError } = useQuery({
@@ -885,25 +899,26 @@ export function ProfilePage() {
         {/* Tabs */}
         <div className="bg-white rounded-2xl border border-primary/10 shadow-sm mb-6">
           <div className="flex border-b border-primary/10 overflow-x-auto">
-            {(['profile', 'my-posts', 'replies', 'group-requests', 'points-history'] as TabType[]).map((tab) => (
+            {(['profile', 'my-posts', 'my-market-items', 'replies', 'group-requests', 'points-history'] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-6 py-4 font-semibold transition capitalize ${
-                  activeTab === tab
-                    ? 'text-accent border-b-2 border-accent'
-                    : 'text-primary/70 hover:text-primary hover:bg-primary/5'
-                }`}
+                className={`px-6 py-4 font-semibold transition capitalize ${activeTab === tab
+                  ? 'text-accent border-b-2 border-accent'
+                  : 'text-primary/70 hover:text-primary hover:bg-primary/5'
+                  }`}
               >
-                {tab === 'group-requests' 
-                  ? 'Group Requests' 
-                  : tab === 'my-posts' 
-                    ? 'My Posts' 
-                    : tab === 'replies' 
-                      ? 'Replies' 
-                      : tab === 'points-history'
-                        ? 'Points History'
-                        : tab}
+                {tab === 'group-requests'
+                  ? 'Group Requests'
+                  : tab === 'my-posts'
+                    ? 'My Posts'
+                    : tab === 'my-market-items'
+                      ? 'My Market Items'
+                      : tab === 'replies'
+                        ? 'Replies'
+                        : tab === 'points-history'
+                          ? 'Points History'
+                          : tab}
               </button>
             ))}
           </div>
@@ -923,7 +938,7 @@ export function ProfilePage() {
                 {success}
               </div>
             )}
-            
+
             {/* 如果正在从数据库刷新 profile，显示加载提示 */}
             {isRefreshingProfile && (
               <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm">
@@ -1002,7 +1017,7 @@ export function ProfilePage() {
                       Profile data: {isRefreshingProfile ? 'Loading from database...' : profile ? 'From database (via AuthContext)' : 'Not loaded'}
                     </p>
                   )}
-                  
+
                   {/* Points, Level, Ranking */}
                   <div className="mt-4 flex flex-wrap gap-4">
                     {profileLoading ? (
@@ -1039,7 +1054,7 @@ export function ProfilePage() {
                     <label className="block text-sm font-semibold text-primary mb-2">Username</label>
                     <p className="text-primary/70">{displayUsername || 'Not set'}</p>
                   </div>
-                {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
+                  {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
                   <button
                     onClick={() => {
                       // 进入编辑模式时，初始化编辑值为当前的显示值
@@ -1072,7 +1087,7 @@ export function ProfilePage() {
                       placeholder="Enter your username"
                     />
                   </div>
-                {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
+                  {/* Avatar URL 字段已移除，因为数据库表中没有此列 */}
                   <div className="flex gap-3">
                     <button
                       type="submit"
@@ -1118,7 +1133,7 @@ export function ProfilePage() {
                     <div className="space-y-3">
                       <p className="text-red-600 font-semibold text-lg">Session Expired</p>
                       <p className="text-primary/70 text-sm">
-                        {(myPostsError as any).tokenRefreshFailed 
+                        {(myPostsError as any).tokenRefreshFailed
                           ? 'Your session has expired and could not be refreshed. Please log in again.'
                           : myPostsError.message || 'Invalid or expired token'}
                       </p>
@@ -1192,7 +1207,7 @@ export function ProfilePage() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {/* Pagination */}
                       {myPostsData && myPostsData.total_pages > 1 && (
                         <div className="p-6 border-t border-primary/10 flex items-center justify-between">
@@ -1224,6 +1239,109 @@ export function ProfilePage() {
             </div>
           </div>
         )}
+
+        {/* My Market Items Tab */}
+        {activeTab === 'my-market-items' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl border border-primary/10 shadow-sm">
+              <div className="p-6 border-b border-primary/10">
+                <h2 className="text-xl font-bold text-primary">My Market Items</h2>
+                <p className="text-sm text-primary/70 mt-1">
+                  Items you are selling or looking for
+                </p>
+              </div>
+              {myMarketItemsLoading ? (
+                <div className="p-8 text-center text-primary/60">Loading items…</div>
+              ) : myMarketItemsError ? (
+                <div className="p-8 text-center">
+                  <div className="text-red-600">
+                    <p className="font-semibold">Error loading items</p>
+                    <p className="text-sm text-primary/70 mt-1">
+                      {myMarketItemsError instanceof Error ? myMarketItemsError.message : 'Unknown error'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {myMarketItemsData && myMarketItemsData.items.length === 0 ? (
+                    <div className="p-8 text-center text-primary/60">No items listed yet</div>
+                  ) : (
+                    <>
+                      <div className="divide-y divide-primary/5">
+                        {myMarketItemsData?.items.map((post) => (
+                          <div key={post.id} className="p-6 hover:bg-primary/5 transition">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  {post.is_pinned && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-accent/20 text-accent">
+                                      📌 Pinned
+                                    </span>
+                                  )}
+                                  {post.is_closed && (
+                                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-primary/20 text-primary">
+                                      🔒 Closed
+                                    </span>
+                                  )}
+                                  {post.tags && post.tags.map(tag => (
+                                    <span key={tag} className="px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary/70">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                                <Link
+                                  to={`/thread/${post.id}`}
+                                  className="text-lg font-semibold text-primary hover:text-accent transition mb-2 block"
+                                >
+                                  {post.title}
+                                </Link>
+                                {post.summary && (
+                                  <p className="text-sm text-primary/70 mb-2 line-clamp-2">{post.summary}</p>
+                                )}
+                                <div className="flex items-center gap-4 text-xs text-primary/60">
+                                  <span>{post.reply_count} replies</span>
+                                  <span>{post.view_count} views</span>
+                                  <span>{new Date(post.created_at).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pagination */}
+                      {myMarketItemsData && myMarketItemsData.total_pages > 1 && (
+                        <div className="p-6 border-t border-primary/10 flex items-center justify-between">
+                          <div className="text-sm text-primary/60">
+                            Page {myMarketItemsData.page} of {myMarketItemsData.total_pages} ({myMarketItemsData.total} total)
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setMyMarketItemsPage(p => Math.max(1, p - 1))}
+                              disabled={myMarketItemsPage === 1}
+                              className="px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition disabled:opacity-50"
+                            >
+                              Previous
+                            </button>
+                            <button
+                              onClick={() => setMyMarketItemsPage(p => Math.min(myMarketItemsData.total_pages, p + 1))}
+                              disabled={myMarketItemsPage >= myMarketItemsData.total_pages}
+                              className="px-4 py-2 rounded-lg text-sm font-semibold text-primary border border-primary/15 hover:bg-primary/5 transition disabled:opacity-50"
+                            >
+                              Next
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+       
 
         {/* Replies Tab */}
         {activeTab === 'replies' && (
@@ -1306,8 +1424,8 @@ export function ProfilePage() {
                 <div className="p-8 text-center text-primary/60">Loading points history…</div>
               ) : pointHistoryError ? (
                 <div className="p-8 text-center text-warm">
-                  {pointHistoryError instanceof Error 
-                    ? pointHistoryError.message 
+                  {pointHistoryError instanceof Error
+                    ? pointHistoryError.message
                     : 'Failed to load points history'}
                 </div>
               ) : (
@@ -1322,9 +1440,8 @@ export function ProfilePage() {
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
                                 <span
-                                  className={`text-lg font-bold ${
-                                    record.points > 0 ? 'text-green-600' : 'text-red-600'
-                                  }`}
+                                  className={`text-lg font-bold ${record.points > 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}
                                 >
                                   {record.points > 0 ? '+' : ''}{record.points}
                                 </span>
@@ -1337,11 +1454,10 @@ export function ProfilePage() {
                               </div>
                             </div>
                             <div
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                                record.points > 0
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-red-100 text-red-700'
-                              }`}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold ${record.points > 0
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
+                                }`}
                             >
                               {record.points > 0 ? 'Earned' : 'Deducted'}
                             </div>
@@ -1403,13 +1519,12 @@ export function ProfilePage() {
                             )}
                           </div>
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              request.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : request.status === 'rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${request.status === 'approved'
+                              ? 'bg-green-100 text-green-700'
+                              : request.status === 'rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}
                           >
                             {request.status}
                           </span>
@@ -1452,13 +1567,12 @@ export function ProfilePage() {
                             </div>
                           </div>
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              application.status === 'approved'
-                                ? 'bg-green-100 text-green-700'
-                                : application.status === 'rejected'
-                                  ? 'bg-red-100 text-red-700'
-                                  : 'bg-yellow-100 text-yellow-700'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${application.status === 'approved'
+                              ? 'bg-green-100 text-green-700'
+                              : application.status === 'rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}
                           >
                             {application.status}
                           </span>

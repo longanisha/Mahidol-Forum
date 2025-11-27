@@ -10,6 +10,7 @@ type ForumSidebarProps = {
 
 const MENU_ITEMS = [
   { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
+  { id: 'flea-market', label: 'Flea Market', description: 'Buy, sell, and trade items' },
   { id: 'line-group', label: 'Line Group', description: 'Join LINE groups and communities' },
   { id: 'announcements', label: 'Announcements', description: 'Moderation and campus updates' },
 ]
@@ -70,7 +71,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const currentView = searchParams.get('view') || 'discussions'
-  
+
   // 页面加载时始终获取最新的 announcements（因为侧边栏在所有视图下都显示）
   const { data: announcements = [] } = useQuery({
     queryKey: ['announcements'],
@@ -100,7 +101,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     { label: 'Active members', value: stats ? formatNumber(stats.active_members) : '0' },
     { label: 'Threads this week', value: stats ? stats.threads_this_week.toString() : '0' },
   ]
-  
+
   const handleMenuClick = (itemId: string) => {
     if (onSelectMenu) {
       onSelectMenu(itemId)
@@ -110,6 +111,8 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
         navigate('/?view=line-groups')
       } else if (itemId === 'discussions') {
         navigate('/?view=discussions')
+      } else if (itemId === 'flea-market') {
+        navigate('/?view=flea-market')
       } else if (itemId === 'announcements') {
         navigate('/?view=announcements')
       }
@@ -123,10 +126,10 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
     }
     return currentView === itemId
   }
-  
+
   return (
     <aside className="w-64 shrink-0 hidden lg:block space-y-4">
-      <div className="bg-white rounded-2xl p-5 border border-primary/10 shadow-sm">
+      {/* <div className="bg-white rounded-2xl p-5 border border-primary/10 shadow-sm">
         <p className="text-sm text-primary/70 mb-4">
           Share an insight, ask a question, or help someone plan their Mahidol journey.
         </p>
@@ -145,7 +148,7 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
             Login to Post
           </Link>
         )}
-      </div>
+      </div> */}
 
       <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm">
         <div className="text-xs font-semibold text-primary/50 uppercase tracking-wider mb-3">
@@ -159,25 +162,23 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
                 <button
                   type="button"
                   onClick={() => handleMenuClick(item.id)}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg transition text-left group ${
-                    active
-                      ? 'bg-accent/10 border border-accent/30'
-                      : 'hover:bg-primary/5'
-                  }`}
+                  className={`w-full flex items-center justify-between p-2.5 rounded-lg transition text-left group ${active
+                    ? 'bg-accent/10 border border-accent/30'
+                    : 'hover:bg-primary/5'
+                    }`}
                 >
                   <div>
-                    <div className={`font-semibold text-sm transition ${
-                      active
-                        ? 'text-accent'
-                        : 'text-primary group-hover:text-accent'
-                    }`}>
+                    <div className={`font-semibold text-sm transition ${active
+                      ? 'text-accent'
+                      : 'text-primary group-hover:text-accent'
+                      }`}>
                       {item.label}
                     </div>
                     <div className="text-xs text-primary/60 mt-0.5">{item.description}</div>
                   </div>
                   {item.id === 'discussions' && totalThreads ? (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white bg-accent">
-                      {totalThreads}
+                    <span className="">
+                      {/* {totalThreads} */}
                     </span>
                   ) : (
                     <span className={`transition ${active ? 'text-accent' : 'text-primary/30'}`} aria-hidden="true">
@@ -241,15 +242,14 @@ export function ForumSidebar({ onSelectMenu, totalThreads }: ForumSidebarProps) 
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <div
-                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                      index === 0
-                        ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
-                        : index === 1
-                          ? 'bg-gradient-to-br from-gray-300 to-gray-500'
-                          : index === 2
-                            ? 'bg-gradient-to-br from-orange-400 to-orange-600'
-                            : 'bg-gradient-to-br from-blue-400 to-blue-600'
-                    }`}
+                    className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${index === 0
+                      ? 'bg-gradient-to-br from-yellow-400 to-yellow-600'
+                      : index === 1
+                        ? 'bg-gradient-to-br from-gray-300 to-gray-500'
+                        : index === 2
+                          ? 'bg-gradient-to-br from-orange-400 to-orange-600'
+                          : 'bg-gradient-to-br from-blue-400 to-blue-600'
+                      }`}
                   >
                     {index + 1}
                   </div>

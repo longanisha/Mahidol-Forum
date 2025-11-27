@@ -39,6 +39,41 @@ type LineGroup = {
   } | null
 }
 
+type LineGroupCreationRequest = {
+  id: string
+  requester_id: string
+  name: string
+  description: string | null
+  qr_code_url: string
+  status: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  rejection_reason: string | null
+  created_at: string
+  updated_at: string | null
+}
+
+type LineGroupApplication = {
+  id: string
+  user_id: string
+  group_id: string
+  message: string | null
+  status: string
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  user: {
+    id: string | null
+    username: string | null
+  } | null
+  group: {
+    id: string
+    name: string
+    description: string | null
+    qr_code_url: string
+  } | null
+}
+
 type PaginatedThreadsResponse = {
   items: ThreadWithAuthor[]
   total: number
@@ -53,13 +88,18 @@ async function fetchThreads(
   accessToken?: string | null,
   sortBy: string = 'latest',
   getAll: boolean = false, // 是否获取所有数据（用于搜索/tag过滤）
+  category?: string,
 ): Promise<PaginatedThreadsResponse> {
   // 如果需要获取所有数据（搜索/tag过滤），使用较大的page_size
   // 使用10000以确保获取足够多的数据（实际数据量通常不会超过这个数）
   const actualPageSize = getAll ? 10000 : pageSize
   const actualPage = getAll ? 1 : page
+  let url = `/posts/?page=${actualPage}&page_size=${actualPageSize}&sort_by=${sortBy}`
+  if (category) {
+    url += `&category=${encodeURIComponent(category)}`
+  }
   const data = await apiFetch<PaginatedThreadsResponse>(
-    `/posts/?page=${actualPage}&page_size=${actualPageSize}&sort_by=${sortBy}`,
+    url,
     {
       accessToken: accessToken || undefined,
     },
@@ -101,19 +141,19 @@ export function HomePage() {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const viewMode = searchParams.get('view') || 'discussions' // 'discussions', 'announcements', or 'line-groups'
-  
+
   // 从 URL 参数读取搜索和 tag 状态，确保不同页面的状态独立
   // 使用 viewMode 作为前缀来区分不同页面的状态
   const searchQuery = searchParams.get(`${viewMode}_search`) || ''
   const selectedTag = searchParams.get(`${viewMode}_tag`) || null
-  
+
   // 分页状态（仅用于 discussions）
   const currentPage = parseInt(searchParams.get('page') || '1', 10)
   const pageSize = 10
-  
+
   // 排序状态（discussions 和 announcements 都有排序）
   const sortBy = searchParams.get(`${viewMode}_sort`) || 'latest' // 'latest', 'views', 'replies'
-  
+
   // 更新搜索和 tag 的辅助函数
   const setSearchQuery = (query: string) => {
     setSearchParams((prev) => {
@@ -126,7 +166,7 @@ export function HomePage() {
       return prev
     })
   }
-  
+
   const setSelectedTag = (tag: string | null) => {
     setSearchParams((prev) => {
       if (tag) {
@@ -138,7 +178,7 @@ export function HomePage() {
       return prev
     })
   }
-  
+
   // LINE Groups specific state
   const [selectedGroup, setSelectedGroup] = useState<LineGroup | null>(null)
   const [showApplyModal, setShowApplyModal] = useState(false)
@@ -155,19 +195,19 @@ export function HomePage() {
   // 这样可以确保获取到相同的数据集，不会因为排序方式不同而获取到不同的数据
   const hasSearchOrTag = !!(searchQuery || selectedTag)
   const fetchSortBy = hasSearchOrTag ? 'latest' : sortBy // 有搜索/tag时，用latest获取数据，前端再排序
-  
+
   const {
     data: threadsData,
     isLoading: threadsLoading,
     isError: threadsError,
     error: threadsErrorDetail,
   } = useQuery({
-    queryKey: ['posts', 'all', fetchSortBy, accessToken, searchQuery, selectedTag],
-    queryFn: () => fetchThreads(1, 1000, accessToken, fetchSortBy, true),
-    enabled: viewMode === 'discussions' || viewMode === 'all',
+    queryKey: ['posts', 'all', fetchSortBy, accessToken, searchQuery, selectedTag, viewMode],
+    queryFn: () => fetchThreads(1, 1000, accessToken, fetchSortBy, true, viewMode === 'flea-market' ? 'Flea Market' : undefined),
+    enabled: viewMode === 'discussions' || viewMode === 'all' || viewMode === 'flea-market',
     staleTime: 2 * 60 * 1000, // 2 minutes - threads 更新较频繁，缓存时间稍短
   })
-  
+
   const threads = threadsData?.items || []
   const totalThreads = threadsData?.total || 0
   const totalPages = threadsData?.total_pages || 0
@@ -211,7 +251,7 @@ export function HomePage() {
   })
 
   const safeThreads = threads ?? []
-  
+
   // 将 announcements 转换为类似 thread 的格式以便显示（必须在其他使用它的 useMemo 之前定义）
   const announcementThreads = useMemo(() => {
     return (announcements || []).map((announcement): ThreadWithAuthor => ({
@@ -235,39 +275,41 @@ export function HomePage() {
       } : null,
     }))
   }, [announcements])
-  
-  const isLoading = viewMode === 'discussions' 
-    ? threadsLoading 
-    : viewMode === 'announcements' 
-    ? announcementsLoading 
-    : viewMode === 'line-groups'
-    ? lineGroupsLoading
-    : threadsLoading || announcementsLoading || lineGroupsLoading
-  const isError = viewMode === 'discussions' 
-    ? threadsError 
-    : viewMode === 'announcements' 
-    ? announcementsError 
-    : viewMode === 'line-groups'
-    ? lineGroupsError
-    : threadsError || announcementsError || lineGroupsError
-  const error = viewMode === 'discussions' 
-    ? threadsErrorDetail 
-    : viewMode === 'announcements' 
-    ? announcementsErrorDetail 
-    : viewMode === 'line-groups'
-    ? lineGroupsErrorDetail
-    : threadsErrorDetail || announcementsErrorDetail || lineGroupsErrorDetail
+
+  const isLoading = (viewMode === 'discussions' || viewMode === 'flea-market')
+    ? threadsLoading
+    : viewMode === 'announcements'
+      ? announcementsLoading
+      : viewMode === 'line-groups'
+        ? lineGroupsLoading
+        : threadsLoading || announcementsLoading || lineGroupsLoading
+  const isError = (viewMode === 'discussions' || viewMode === 'flea-market')
+    ? threadsError
+    : viewMode === 'announcements'
+      ? announcementsError
+      : viewMode === 'line-groups'
+        ? lineGroupsError
+        : threadsError || announcementsError || lineGroupsError
+  const error = (viewMode === 'discussions' || viewMode === 'flea-market')
+    ? threadsErrorDetail
+    : viewMode === 'announcements'
+      ? announcementsErrorDetail
+      : viewMode === 'line-groups'
+        ? lineGroupsErrorDetail
+        : threadsErrorDetail || announcementsErrorDetail || lineGroupsErrorDetail
 
   // 计算标签及其引用次数（包含 discussions 和 announcements）
   const tagsWithCount = useMemo(() => {
     const tagCountMap = new Map<string, number>()
-    
+
     // 初始化基础标签
-    const baseTags = ['AI', 'ICT', 'Courses', 'Sports', 'Events', 'Digital Nomad', 'Thai']
+    const baseTags = viewMode === 'flea-market'
+      ? ['Selling', 'Buying', 'Trading', 'Free', 'Service', 'Textbooks', 'Electronics', 'Furniture']
+      : ['AI', 'ICT', 'Courses', 'Sports', 'Events', 'Digital Nomad', 'Thai']
     baseTags.forEach(tag => {
       tagCountMap.set(tag, 0)
     })
-    
+
     // 统计 discussions 的标签
     safeThreads.forEach((thread) => {
       // 统计 category
@@ -281,7 +323,7 @@ export function HomePage() {
         tagCountMap.set(tag, count + 1)
       })
     })
-    
+
     // 统计 announcements 的标签
     announcementThreads.forEach((announcement) => {
       // 统计 category
@@ -295,7 +337,7 @@ export function HomePage() {
         tagCountMap.set(tag, count + 1)
       })
     })
-    
+
     // 转换为数组并按引用次数排序
     return Array.from(tagCountMap.entries())
       .map(([tag, count]) => ({ tag, count }))
@@ -433,7 +475,7 @@ export function HomePage() {
 
   const handleSubmitCreateRequest = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
+
     if (!createRequestName.trim()) {
       alert('Please provide group name')
       return
@@ -492,8 +534,8 @@ export function HomePage() {
   // 根据 viewMode 决定显示的内容
   // 注意：discussions 现在使用后端分页，不需要前端过滤
   const allItems = useMemo(() => {
-    if (viewMode === 'discussions') {
-      // discussions 使用后端分页，直接返回当前页的数据
+    if (viewMode === 'discussions' || viewMode === 'flea-market') {
+      // discussions 和 flea-market 使用后端分页，直接返回当前页的数据
       return safeThreads
     } else if (viewMode === 'announcements') {
       return announcementThreads
@@ -509,8 +551,8 @@ export function HomePage() {
   // 对于其他视图，仍然需要前端过滤
   const filteredItems = useMemo(() => {
     let filtered: ThreadWithAuthor[] = []
-    
-    if (viewMode === 'discussions') {
+
+    if (viewMode === 'discussions' || viewMode === 'flea-market') {
       // 先进行搜索和tag过滤
       filtered = safeThreads.filter((item) => {
         const matchesSearch =
@@ -527,13 +569,13 @@ export function HomePage() {
         const matchesTag = !selectedTag || allTags.includes(selectedTag.toLowerCase())
         return matchesSearch && matchesTag
       })
-      
+
       // 对所有过滤后的结果进行排序
       filtered = [...filtered].sort((a, b) => {
         // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
-        
+
         // 根据排序方式排序
         if (sortBy === 'views') {
           // 按浏览数降序，如果相同则按时间新到旧
@@ -567,13 +609,13 @@ export function HomePage() {
         const matchesTag = !selectedTag || allTags.includes(selectedTag.toLowerCase())
         return matchesSearch && matchesTag
       })
-      
+
       // 对 Announcements 进行排序
       filtered = [...filtered].sort((a, b) => {
         // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
-        
+
         // 根据排序方式排序
         if (sortBy === 'views') {
           // 按浏览数降序，如果相同则按时间新到旧
@@ -607,13 +649,13 @@ export function HomePage() {
         const matchesTag = !selectedTag || allTags.includes(selectedTag.toLowerCase())
         return matchesSearch && matchesTag
       })
-      
+
       // 其他视图也需要排序
       filtered = [...filtered].sort((a, b) => {
         // 置顶的在前
         if (a.is_pinned && !b.is_pinned) return -1
         if (!a.is_pinned && b.is_pinned) return 1
-        
+
         // 根据排序方式排序
         if (sortBy === 'views') {
           return (b.view_count ?? 0) - (a.view_count ?? 0)
@@ -625,7 +667,7 @@ export function HomePage() {
         }
       })
     }
-    
+
     return filtered
   }, [viewMode, allItems, safeThreads, announcementThreads, searchQuery, selectedTag, sortBy])
 
@@ -633,13 +675,15 @@ export function HomePage() {
     <div className="min-h-screen bg-muted">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-6">
-          <ForumSidebar 
-            totalThreads={safeThreads.length} 
+          <ForumSidebar
+            totalThreads={safeThreads.length}
             onSelectMenu={(section) => {
               if (section === 'discussions') {
                 setSearchParams({ view: 'discussions' })
               } else if (section === 'announcements') {
                 setSearchParams({ view: 'announcements' })
+              } else if (section === 'flea-market') {
+                setSearchParams({ view: 'flea-market' })
               } else if (section === 'line-group') {
                 setSearchParams({ view: 'line-groups' })
               }
@@ -654,22 +698,26 @@ export function HomePage() {
                     Mahidol Campus Community
                   </p>
                   <h1 className="text-3xl font-bold text-primary mb-2">
-                    {viewMode === 'announcements' 
-                      ? 'Announcements' 
+                    {viewMode === 'announcements'
+                      ? 'Announcements'
                       : viewMode === 'line-groups'
-                      ? 'LINE Groups'
-                      : viewMode === 'all' 
-                      ? 'Discussions & Announcements' 
-                      : 'Discussions'}
+                        ? 'LINE Groups'
+                        : viewMode === 'flea-market'
+                          ? 'Flea Market'
+                          : viewMode === 'all'
+                            ? 'Discussions & Announcements'
+                            : 'Discussions'}
                   </h1>
                   <p className="text-primary/70">
-                    {viewMode === 'announcements' 
+                    {viewMode === 'announcements'
                       ? 'Official announcements and updates from administrators'
                       : viewMode === 'line-groups'
-                      ? 'Join LINE groups and communities to connect with fellow students and alumni'
-                      : viewMode === 'all'
-                      ? 'Fresh updates from students, staff, and alumni — filter by tag or search to find the insight you need.'
-                      : 'Fresh updates from students, staff, and alumni — filter by tag or search to find the insight you need.'}
+                        ? 'Join LINE groups and communities to connect with fellow students and alumni'
+                        : viewMode === 'flea-market'
+                          ? 'List items for sale, find great deals, or trade with other students on campus'
+                          : viewMode === 'all'
+                            ? 'Fresh updates from students, staff, and alumni — filter by tag or search to find the insight you need.'
+                            : 'Share an insight, ask a question, or help someone plan their Mahidol journey.'}
                   </p>
                 </div>
                 {viewMode === 'line-groups' ? (
@@ -683,10 +731,10 @@ export function HomePage() {
                   )
                 ) : user ? (
                   <Link
-                    to="/create-thread"
+                    to={viewMode === 'flea-market' ? "/create-thread?category=Flea Market" : "/create-thread"}
                     className="px-5 py-2.5 rounded-xl font-semibold text-white bg-[#1D4F91] hover:shadow-lg transition shrink-0 inline-block"
                   >
-                    Post a topic
+                    {viewMode === 'flea-market' ? 'Sell Item' : 'Post a topic'}
                   </Link>
                 ) : (
                   <Link
@@ -709,9 +757,9 @@ export function HomePage() {
                     resultCount={filteredItems.length}
                     hotTags={top5HotTags}
                   />
-                  
-                  {/* Sort Options - 适用于 discussions 和 announcements */}
-                  {(viewMode === 'discussions' || viewMode === 'announcements') && (
+
+                  {/* Sort Options - 适用于 discussions, flea-market 和 announcements */}
+                  {(viewMode === 'discussions' || viewMode === 'announcements' || viewMode === 'flea-market') && (
                     <div className="bg-white rounded-2xl p-4 border border-primary/10 shadow-sm mb-4">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-primary/70">Sort by:</span>
@@ -724,11 +772,10 @@ export function HomePage() {
                                 return prev
                               })
                             }}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                              sortBy === 'latest'
-                                ? 'bg-accent text-white'
-                                : 'bg-primary/5 text-primary hover:bg-primary/10'
-                            }`}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${sortBy === 'latest'
+                              ? 'bg-accent text-white'
+                              : 'bg-primary/5 text-primary hover:bg-primary/10'
+                              }`}
                           >
                             Latest
                           </button>
@@ -740,11 +787,10 @@ export function HomePage() {
                                 return prev
                               })
                             }}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                              sortBy === 'views'
-                                ? 'bg-accent text-white'
-                                : 'bg-primary/5 text-primary hover:bg-primary/10'
-                            }`}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${sortBy === 'views'
+                              ? 'bg-accent text-white'
+                              : 'bg-primary/5 text-primary hover:bg-primary/10'
+                              }`}
                           >
                             Most Views
                           </button>
@@ -756,11 +802,10 @@ export function HomePage() {
                                 return prev
                               })
                             }}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                              sortBy === 'replies'
-                                ? 'bg-accent text-white'
-                                : 'bg-primary/5 text-primary hover:bg-primary/10'
-                            }`}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${sortBy === 'replies'
+                              ? 'bg-accent text-white'
+                              : 'bg-primary/5 text-primary hover:bg-primary/10'
+                              }`}
                           >
                             Most Replies
                           </button>
@@ -786,16 +831,18 @@ export function HomePage() {
 
               {!isLoading && !isError && filteredItems.length === 0 && (
                 <div className="bg-white rounded-2xl p-8 text-center text-primary/60 border border-dashed border-primary/20">
-                  {viewMode === 'discussions' && !searchQuery && !selectedTag ? (
+                  {(viewMode === 'discussions' || viewMode === 'flea-market') && !searchQuery && !selectedTag ? (
                     // 没有搜索和标签过滤，但数据为空（可能是后端没有数据）
-                    'No threads yet. Be the first to start a discussion!'
+                    viewMode === 'flea-market'
+                      ? 'No items for sale yet. Be the first to list something!'
+                      : 'No threads yet. Be the first to start a discussion!'
                   ) : (
                     <>
-                      No {viewMode === 'announcements' 
-                        ? 'announcements' 
+                      No {viewMode === 'announcements'
+                        ? 'announcements'
                         : viewMode === 'line-groups'
-                        ? 'LINE groups'
-                        : 'threads'} match {selectedTag ? `the "${selectedTag}" tag` : searchQuery ? 'that search query' : 'the current filters'}.
+                          ? 'LINE groups'
+                          : 'threads'} match {selectedTag ? `the "${selectedTag}" tag` : searchQuery ? 'that search query' : 'the current filters'}.
                     </>
                   )}
                 </div>
@@ -820,7 +867,7 @@ export function HomePage() {
                       const isApproved = applicationStatus === 'approved'
                       const isPending = applicationStatus === 'pending'
                       const isRejected = applicationStatus === 'rejected'
-                      
+
                       let qrCodeUrl: string | null = null
                       if (isApproved) {
                         const appQrCode = myApplication?.group?.qr_code_url
@@ -879,7 +926,7 @@ export function HomePage() {
                                   }}
                                 />
                               ) : (
-                                <div 
+                                <div
                                   className="rounded-lg border border-primary/20 bg-primary/5 flex items-center justify-center"
                                   style={{ width: '300px', height: '300px' }}
                                 >
@@ -940,17 +987,17 @@ export function HomePage() {
                 // 其他视图：显示 ThreadCard
                 <>
                   {!isLoading && !isError && (() => {
-                    // 对于 discussions，需要前端分页
-                    if (viewMode === 'discussions') {
+                    // 对于 discussions 和 flea-market，需要前端分页
+                    if (viewMode === 'discussions' || viewMode === 'flea-market') {
                       const start = (currentPage - 1) * pageSize
                       const end = start + pageSize
                       const paginatedItems = filteredItems.slice(start, end)
                       const totalFilteredPages = Math.ceil(filteredItems.length / pageSize)
-                      
+
                       return (
                         <>
                           {paginatedItems.map((item) => <ThreadCard key={item.id} thread={item} />)}
-                          
+
                           {/* 分页控件 */}
                           {totalFilteredPages > 1 && (
                             <div className="flex items-center justify-center gap-2 mt-6">
@@ -966,7 +1013,7 @@ export function HomePage() {
                               >
                                 Previous
                               </button>
-                              
+
                               <div className="flex items-center gap-1">
                                 {Array.from({ length: Math.min(5, totalFilteredPages) }, (_, i) => {
                                   let pageNum: number
@@ -979,7 +1026,7 @@ export function HomePage() {
                                   } else {
                                     pageNum = currentPage - 2 + i
                                   }
-                                  
+
                                   return (
                                     <button
                                       key={pageNum}
@@ -988,18 +1035,17 @@ export function HomePage() {
                                         params.set('page', pageNum.toString())
                                         setSearchParams(params)
                                       }}
-                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
-                                        currentPage === pageNum
-                                          ? 'bg-accent text-white'
-                                          : 'text-primary border border-primary/15 hover:bg-primary/5'
-                                      }`}
+                                      className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${currentPage === pageNum
+                                        ? 'bg-accent text-white'
+                                        : 'text-primary border border-primary/15 hover:bg-primary/5'
+                                        }`}
                                     >
                                       {pageNum}
                                     </button>
                                   )
                                 })}
                               </div>
-                              
+
                               <button
                                 onClick={() => {
                                   const newPage = Math.min(totalFilteredPages, currentPage + 1)
@@ -1012,7 +1058,7 @@ export function HomePage() {
                               >
                                 Next
                               </button>
-                              
+
                               <span className="text-sm text-primary/60 ml-4">
                                 Page {currentPage} / {totalFilteredPages}, Total {filteredItems.length} items
                               </span>
@@ -1142,8 +1188,8 @@ export function HomePage() {
             <h2 className="text-2xl font-bold text-primary mb-4">
               Request to Create LINE Group
             </h2>
-            <form 
-              onSubmit={handleSubmitCreateRequest} 
+            <form
+              onSubmit={handleSubmitCreateRequest}
               className="space-y-4"
               noValidate
             >

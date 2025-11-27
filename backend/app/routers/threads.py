@@ -59,6 +59,7 @@ async def list_posts(
   page: int = 1,
   page_size: int = 10,
   sort_by: str = 'latest',  # 'latest', 'views', 'replies'
+  category: Optional[str] = None,
 ):
   try:
     # 验证分页参数
@@ -95,13 +96,17 @@ async def list_posts(
       # 按评论数排序：需要先获取所有数据，计算 reply_count，然后排序
       # 为了性能，先获取更多数据（比如前 100 条），排序后再分页
       fetch_limit = min(100, total) if total > 0 else 100
-      response = (
-        supabase.table('posts')
-        .select(
+      query = supabase.table('posts').select(
           'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
           'tags, view_count, upvote_count, downvote_count, is_closed, is_pinned, pinned_at, '
           'profiles(id, username, avatar_url)',
         )
+      
+      if category:
+        query = query.eq('category', category)
+        
+      response = (
+        query
         .order('is_pinned', desc=True)  # 置顶的在前
         .order('created_at', desc=True)  # 先按时间排序获取数据
         .limit(fetch_limit)
@@ -116,8 +121,13 @@ async def list_posts(
           'tags, view_count, upvote_count, downvote_count, is_closed, is_pinned, pinned_at, '
           'profiles(id, username, avatar_url)',
         )
-        .order('is_pinned', desc=True)  # 置顶的在前
       )
+      
+      # Apply category filter if provided
+      if category:
+        query = query.eq('category', category)
+        
+      query = query.order('is_pinned', desc=True)  # 置顶的在前
       
       if sort_by == 'views':
         query = query.order('view_count', desc=True)
@@ -619,7 +629,7 @@ async def create_post(
     
     # 奖励发布帖子积分 (+10)
     try:
-      success = award_points(supabase, user.id, 10, '发布帖子')
+      success = award_points(supabase, user.id, 10, 'Make a post')
       if not success:
         print(f"[CREATE_POST] Failed to award points to user {user.id} for posting")
     except Exception as e:
@@ -649,6 +659,20 @@ async def create_reply(
   supabase: SupabaseClientDep,
   user: AuthenticatedUser = Depends(get_current_user),
 ):
+  # Check if post is closed
+  post_check = (
+    supabase.table('posts')
+    .select('id, is_closed')
+    .eq('id', post_id)
+    .execute()
+  )
+  
+  if not post_check.data or len(post_check.data) == 0:
+    raise HTTPException(status.HTTP_404_NOT_FOUND, 'Post not found')
+  
+  if post_check.data[0].get('is_closed', False):
+    raise HTTPException(status.HTTP_403_FORBIDDEN, 'This post is closed and no longer accepts replies')
+  
   # Ensure profile exists before creating reply
   profile_check = (
     supabase.table('profiles')
@@ -745,17 +769,22 @@ async def create_reply(
 
 
 @router.get('/hot-tags', response_model=List[HotTag])
-async def get_hot_tags(supabase: SupabaseClientDep, limit: int = 20):
+async def get_hot_tags(supabase: SupabaseClientDep, limit: int = 20, category: Optional[str] = None):
   try:
     # 进一步优化：减少查询数量，只查询最近500条 posts
     # 这样可以更快地返回结果，同时仍然能准确反映热门标签
-    response = (
+    query = (
       supabase.table('posts')
       .select('id, tags')
       .order('created_at', desc=True)
       .limit(500)  # 从1000减少到500，提升查询速度
-      .execute()
     )
+    
+    # Apply category filter if provided
+    if category:
+      query = query.eq('category', category)
+    
+    response = query.execute()
     
     if response.data is None:
       return []
@@ -850,6 +879,7 @@ async def list_my_posts(
   user: AuthenticatedUser = Depends(get_current_user),
   page: int = 1,
   page_size: int = 10,
+  category: Optional[str] = None,
 ):
   """Get posts created by the current user"""
   try:
@@ -865,14 +895,18 @@ async def list_my_posts(
     # 完全按照 get_all_replies_to_my_posts 的逻辑：使用同步查询，直接执行
     # 筛选条件：author_id = user.id（筛选出当前用户创建的帖子）
     print(f"[list_my_posts] Querying posts for author_id: {user.id}")
-    response = (
-      supabase.table('posts')
-      .select(
+    
+    query = supabase.table('posts').select(
         'id, title, category, summary, cover_image_url, author_id, created_at, updated_at, '
         'tags, view_count, upvote_count, downvote_count, is_closed, is_pinned, '
         'profiles(id, username)',
-      )
-      .eq('author_id', user.id)  # 关键筛选：只获取 author_id 等于当前用户 ID 的帖子
+      ).eq('author_id', user.id)
+      
+    if category:
+      query = query.eq('category', category)
+      
+    response = (
+      query
       .order('created_at', desc=True)
       .range(offset, offset + page_size - 1)
       .execute()
