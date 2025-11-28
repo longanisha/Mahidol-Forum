@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, EmailStr
 import bcrypt
 from datetime import datetime
+from typing import Optional
 
 from ..dependencies import SupabaseClientDep
 
@@ -17,7 +18,7 @@ class AdminLoginResponse(BaseModel):
   success: bool
   admin_id: str
   email: str
-  username: str | None
+  username: Optional[str]
   message: str
 
 
@@ -128,7 +129,7 @@ async def admin_login(
 class AdminRegisterRequest(BaseModel):
   email: EmailStr
   password: str
-  username: str | None = None
+  username: Optional[str] = None
 
 
 @router.post('/register')

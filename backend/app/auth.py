@@ -35,7 +35,7 @@ class AuthenticatedUser:
 async def get_current_user(
   supabase: SupabaseClientDep,
   request: Request,
-  authorization: Annotated[str | None, Header(alias='Authorization')] = None,
+  authorization: Annotated[Optional[str], Header(alias='Authorization')] = None,
 ) -> AuthenticatedUser:
   print(f"[get_current_user] ====== Starting token validation ======")
   
@@ -201,7 +201,7 @@ async def get_current_user(
 async def get_optional_user(
   supabase: SupabaseClientDep,
   request: Request,
-  authorization: Annotated[str | None, Header(alias='Authorization')] = None,
+  authorization: Annotated[Optional[str], Header(alias='Authorization')] = None,
 ) -> Optional[AuthenticatedUser]:
   if not authorization:
     # 尝试从 request 中获取
@@ -219,9 +219,9 @@ async def get_optional_user(
 async def get_admin_user(
   supabase: SupabaseClientDep,
   request: Request,
-  authorization: Annotated[str | None, Header(alias='Authorization')] = None,
-  admin_id: Annotated[str | None, Header(alias='X-Admin-ID')] = None,
-  admin_email: Annotated[str | None, Header(alias='X-Admin-Email')] = None,
+  authorization: Annotated[Optional[str], Header(alias='Authorization')] = None,
+  admin_id: Annotated[Optional[str], Header(alias='X-Admin-ID')] = None,
+  admin_email: Annotated[Optional[str], Header(alias='X-Admin-Email')] = None,
 ) -> AuthenticatedUser:
   """支持两种认证方式：Supabase Auth token 或 Admin ID/Email，并验证用户是否为管理员"""
   user: AuthenticatedUser | None = None
@@ -318,9 +318,9 @@ async def get_admin_user(
 async def get_user_or_admin(
   supabase: SupabaseClientDep,
   request: Request,
-  authorization: Annotated[str | None, Header(alias='Authorization')] = None,
-  admin_id: Annotated[str | None, Header(alias='X-Admin-ID')] = None,
-  admin_email: Annotated[str | None, Header(alias='X-Admin-Email')] = None,
+  authorization: Annotated[Optional[str], Header(alias='Authorization')] = None,
+  admin_id: Annotated[Optional[str], Header(alias='X-Admin-ID')] = None,
+  admin_email: Annotated[Optional[str], Header(alias='X-Admin-Email')] = None,
 ) -> AuthenticatedUser:
   """支持两种认证方式：Supabase Auth token 或 Admin ID/Email（用于需要支持普通用户的端点）"""
   # 如果通过 Header 依赖没有获取到，尝试从 request 中获取（处理大小写问题）
