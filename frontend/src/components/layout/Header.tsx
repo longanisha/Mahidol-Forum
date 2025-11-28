@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import forum_logo from '../../assets/forum_logo.png';
 
 const MENU_ITEMS = [
   { id: 'discussions', label: 'Discussions', description: 'Live topics from every faculty' },
@@ -163,7 +164,7 @@ export function Header() {
 
             <Link to="/" className="flex items-center gap-3 text-primary hover:opacity-80 transition">
               <img
-                src="/forum_logo.png"
+                src={forum_logo}
                 alt="Mahidol Forum"
                 className="h-10 w-auto"
               />
