@@ -351,8 +351,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // If we got a result from getSession (not timeout)
           if (sessionResult && sessionResult.data !== undefined) {
             result = sessionResult
-            console.log('[AuthContext] ✅ Got session from getSession:', result.data?.session ? 'session exists' : 'no session')
-            if (result.data?.session) {
+            console.log('[AuthContext] ✅ Got session from getSession:', result?.data?.session ? 'session exists' : 'no session')
+            if (result?.data?.session) {
               console.log('[AuthContext] Session user ID:', result.data.session.user?.id)
               console.log('[AuthContext] Session expires at:', result.data.session.expires_at)
             }
@@ -518,8 +518,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
               if (mounted) {
                 console.log('[AuthContext] ✅ Got session from state change in background')
                 setSession(sessionFromStateChange)
-                setUser(sessionFromStateChange.user ?? null)
-                if (sessionFromStateChange.user) {
+                setUser(sessionFromStateChange?.user ?? null)
+                if (sessionFromStateChange?.user) {
                   loadProfile(sessionFromStateChange.user.id).then(profileData => {
                     if (mounted) setProfile(profileData)
                   })

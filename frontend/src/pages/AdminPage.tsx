@@ -2399,13 +2399,15 @@ export function AdminPage() {
                     className="w-full px-4 py-2 rounded-lg border border-primary/15 bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent transition"
                   >
                     <option value="">Select a tag to add...</option>
-                    {tags
-                      .filter(tag => !mergeSourceTags.includes(tag.tag))
-                      .map((tag) => (
-                        <option key={tag.tag} value={tag.tag}>
-                          {tag.tag} ({tag.count} posts)
-                        </option>
-                      ))}
+                    {Array.isArray(tags)
+                      ? tags
+                          .filter((tag: any) => !mergeSourceTags.includes(tag.tag))
+                          .map((tag: any) => (
+                            <option key={tag.tag} value={tag.tag}>
+                              {tag.tag} ({tag.count} posts)
+                            </option>
+                          ))
+                      : null}
                   </select>
                 </div>
                 <div className="mb-4">

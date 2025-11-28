@@ -82,7 +82,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     // 确保在刷新时能够恢复 session
     flowType: 'pkce',
     // 确保在页面加载时自动恢复 session
-    storageSync: true,
+    // storageSync is handled automatically by persistSession: true
   },
   global: {
     headers: {
